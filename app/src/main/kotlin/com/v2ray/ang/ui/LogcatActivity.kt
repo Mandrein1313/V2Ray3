@@ -8,9 +8,9 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import com.v2ray.ang.R
+import com.v2ray.ang.databinding.ActivityLogcatBinding
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.Utils
-import kotlinx.android.synthetic.main.activity_logcat.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -19,9 +19,13 @@ import java.util.LinkedHashSet
 
 class LogcatActivity : BaseActivity() {
 
+    private lateinit var binding: ActivityLogcatBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_logcat)
+        // ใช้ View Binding แทน Synthetics
+        binding = ActivityLogcatBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         title = getString(R.string.title_logcat)
 
@@ -30,35 +34,28 @@ class LogcatActivity : BaseActivity() {
     }
 
     private fun logcat(shouldFlushLog: Boolean) {
-
         try {
-            pb_waiting.visibility = View.VISIBLE
+            binding.pbWaiting.visibility = View.VISIBLE
 
             GlobalScope.launch(Dispatchers.Default) {
                 if (shouldFlushLog) {
                     val lst = LinkedHashSet<String>()
                     lst.add("logcat")
                     lst.add("-c")
-                    val process = Runtime.getRuntime().exec(lst.toTypedArray())
-                    process.waitFor()
+                    Runtime.getRuntime().exec(lst.toTypedArray()).waitFor()
                 }
-                val lst = LinkedHashSet<String>()
-                lst.add("logcat")
-                lst.add("-d")
-                lst.add("-v")
-                lst.add("time")
-                lst.add("-s")
-                lst.add("GoLog,tun2socks,com.v2ray.ang")
+                
+                val lst = listOf("logcat", "-d", "-v", "time", "-s", "GoLog,tun2socks,com.v2ray.ang")
                 val process = Runtime.getRuntime().exec(lst.toTypedArray())
-//                val bufferedReader = BufferedReader(
-//                        InputStreamReader(process.inputStream))
-//                val allText = bufferedReader.use(BufferedReader::readText)
                 val allText = process.inputStream.bufferedReader().use { it.readText() }
+                
                 launch(Dispatchers.Main) {
-                    tv_logcat.text = allText
-                    tv_logcat.movementMethod = ScrollingMovementMethod()
-                    pb_waiting.visibility = View.GONE
-                    Handler(Looper.getMainLooper()).post { sv_logcat.fullScroll(View.FOCUS_DOWN) }
+                    binding.tvLogcat.text = allText
+                    binding.tvLogcat.movementMethod = ScrollingMovementMethod()
+                    binding.pbWaiting.visibility = View.GONE
+                    Handler(Looper.getMainLooper()).post { 
+                        binding.svLogcat.fullScroll(View.FOCUS_DOWN) 
+                    }
                 }
             }
         } catch (e: IOException) {
@@ -68,12 +65,12 @@ class LogcatActivity : BaseActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_logcat, menu)
-        return super.onCreateOptionsMenu(menu)
+        return super.onCreate(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.copy_all -> {
-            Utils.setClipboard(this, tv_logcat.text.toString())
+            Utils.setClipboard(this, binding.tvLogcat.text.toString())
             toast(R.string.toast_success)
             true
         }

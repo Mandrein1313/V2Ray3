@@ -4,32 +4,28 @@ import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.os.Bundle
-import android.support.v4.app.Fragment
 import android.view.*
-import com.v2ray.ang.R
-import com.v2ray.ang.extension.defaultDPreference
-import com.v2ray.ang.util.Utils
-import kotlinx.android.synthetic.main.fragment_routing_settings.*
-import android.view.MenuInflater
-import com.tbruyelle.rxpermissions.RxPermissions
+import androidx.fragment.app.Fragment
+import com.tbruyelle.rxpermissions2.RxPermissions // ใช้ rxpermissions2 สำหรับ AndroidX
 import com.v2ray.ang.AppConfig
+import com.v2ray.ang.R
+import com.v2ray.ang.databinding.FragmentRoutingSettingsBinding
+import com.v2ray.ang.extension.defaultDPreference
 import com.v2ray.ang.extension.toast
+import com.v2ray.ang.util.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.URL
 
 class RoutingSettingsFragment : Fragment() {
+    private var _binding: FragmentRoutingSettingsBinding? = null
+    private val binding get() = _binding!!
+
     companion object {
         private const val routing_arg = "routing_arg"
         private const val REQUEST_SCAN_REPLACE = 11
         private const val REQUEST_SCAN_APPEND = 12
-    }
-
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_routing_settings, container, false)
     }
 
     fun newInstance(arg: String): Fragment {
@@ -40,29 +36,39 @@ class RoutingSettingsFragment : Fragment() {
         return fragment
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        _binding = FragmentRoutingSettingsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-        val content = activity?.defaultDPreference?.getPrefString(arguments!!.getString(routing_arg), "")
-        et_routing_content.text = Utils.getEditable(content!!)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val content = activity?.defaultDPreference?.getPrefString(arguments?.getString(routing_arg) ?: "", "")
+        binding.etRoutingContent.text = Utils.getEditable(content ?: "")
 
         setHasOptionsMenu(true)
     }
 
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.menu_routing, menu)
-        return super.onCreateOptionsMenu(menu, inflater)
+        super.onCreateOptionsMenu(menu, inflater)
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.save_routing -> {
-            val content = et_routing_content.text.toString()
-            activity?.defaultDPreference?.setPrefString(arguments!!.getString(routing_arg), content)
+            val content = binding.etRoutingContent.text.toString()
+            activity?.defaultDPreference?.setPrefString(arguments?.getString(routing_arg) ?: "", content)
             activity?.toast(R.string.toast_success)
             true
         }
         R.id.del_routing -> {
-            et_routing_content.text = null
+            binding.etRoutingContent.text = null
             true
         }
         R.id.scan_replace -> {
@@ -80,48 +86,33 @@ class RoutingSettingsFragment : Fragment() {
         else -> super.onOptionsItemSelected(item)
     }
 
-    fun scanQRcode(requestCode: Int): Boolean {
-//        try {
-//            startActivityForResult(Intent("com.google.zxing.client.android.SCAN")
-//                    .addCategory(Intent.CATEGORY_DEFAULT)
-//                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP), requestCode)
-//        } catch (e: Exception) {
-        RxPermissions(activity!!)
+    private fun scanQRcode(requestCode: Int): Boolean {
+        activity?.let {
+            RxPermissions(this)
                 .request(Manifest.permission.CAMERA)
-                .subscribe {
-                    if (it)
-                        startActivityForResult(Intent(activity, ScannerActivity::class.java), requestCode)
+                .subscribe { granted ->
+                    if (granted)
+                        startActivityForResult(Intent(it, ScannerActivity::class.java), requestCode)
                     else
-                        activity?.toast(R.string.toast_permission_denied)
+                        it.toast(R.string.toast_permission_denied)
                 }
-//        }
+        }
         return true
     }
 
-    fun setDefaultRules(): Boolean {
+    private fun setDefaultRules(): Boolean {
         var url = AppConfig.v2rayCustomRoutingListUrl
-        when (arguments!!.getString(routing_arg)) {
-            AppConfig.PREF_V2RAY_ROUTING_AGENT -> {
-                url += AppConfig.TAG_AGENT
-            }
-            AppConfig.PREF_V2RAY_ROUTING_DIRECT -> {
-                url += AppConfig.TAG_DIRECT
-            }
-            AppConfig.PREF_V2RAY_ROUTING_BLOCKED -> {
-                url += AppConfig.TAG_BLOCKED
-            }
+        when (arguments?.getString(routing_arg)) {
+            AppConfig.PREF_V2RAY_ROUTING_AGENT -> url += AppConfig.TAG_AGENT
+            AppConfig.PREF_V2RAY_ROUTING_DIRECT -> url += AppConfig.TAG_DIRECT
+            AppConfig.PREF_V2RAY_ROUTING_BLOCKED -> url += AppConfig.TAG_BLOCKED
         }
 
         activity?.toast(R.string.msg_downloading_content)
         GlobalScope.launch(Dispatchers.IO) {
-            val content = try {
-                URL(url).readText()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                ""
-            }
+            val content = try { URL(url).readText() } catch (e: Exception) { "" }
             launch(Dispatchers.Main) {
-                et_routing_content.text = Utils.getEditable(content)
+                binding.etRoutingContent.text = Utils.getEditable(content)
                 activity?.toast(R.string.toast_success)
             }
         }
@@ -130,19 +121,12 @@ class RoutingSettingsFragment : Fragment() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            REQUEST_SCAN_REPLACE ->
-                if (resultCode == RESULT_OK) {
-                    val content = data?.getStringExtra("SCAN_RESULT")
-                    et_routing_content.text = Utils.getEditable(content!!)
-                }
-            REQUEST_SCAN_APPEND ->
-                if (resultCode == RESULT_OK) {
-                    val content = data?.getStringExtra("SCAN_RESULT")
-                    et_routing_content.text = Utils.getEditable("${et_routing_content.text},$content")
-                }
+        if (resultCode == RESULT_OK) {
+            val result = data?.getStringExtra("SCAN_RESULT") ?: ""
+            when (requestCode) {
+                REQUEST_SCAN_REPLACE -> binding.etRoutingContent.text = Utils.getEditable(result)
+                REQUEST_SCAN_APPEND -> binding.etRoutingContent.text = Utils.getEditable("${binding.etRoutingContent.text},$result")
+            }
         }
     }
-
-
 }

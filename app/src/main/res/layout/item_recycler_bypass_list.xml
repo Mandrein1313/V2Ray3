@@ -7,14 +7,12 @@
     android:clickable="true"
     android:focusable="true">
 
-    <android.support.v7.widget.AppCompatImageView
+    <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/icon"
         android:layout_width="46dp"
         android:layout_height="46dp"
         android:paddingStart="14dp"
-        android:paddingLeft="14dp"
-        android:paddingEnd="10dp"
-        android:paddingRight="10dp" />
+        android:paddingEnd="10dp" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -25,28 +23,25 @@
         android:paddingStart="@dimen/layout_margin_right_height"
         android:paddingEnd="@dimen/layout_margin_right_height">
 
-        <android.support.v7.widget.AppCompatTextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
-        <android.support.v7.widget.AppCompatTextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/package_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="@style/TextAppearance.AppCompat.Small" />
     </LinearLayout>
 
-
-    <android.support.v7.widget.AppCompatCheckBox
+    <androidx.appcompat.widget.AppCompatCheckBox
         android:id="@+id/check_box"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clickable="false"
         android:focusable="false"
         android:paddingStart="2dp"
-        android:paddingLeft="2dp"
-        android:paddingEnd="6dp"
-        android:paddingRight="6dp" />
+        android:paddingEnd="6dp" />
 
 </LinearLayout>

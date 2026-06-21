@@ -1,12 +1,12 @@
 package com.v2ray.ang.ui
 
 import android.Manifest
-import android.content.*
-import com.tbruyelle.rxpermissions.RxPermissions
-import com.v2ray.ang.R
-import com.v2ray.ang.util.AngConfigManager
+import android.content.Intent
 import android.os.Bundle
+import com.tbruyelle.rxpermissions2.RxPermissions // ใช้ rxpermissions2 สำหรับ AndroidX
+import com.v2ray.ang.R
 import com.v2ray.ang.extension.toast
+import com.v2ray.ang.util.AngConfigManager
 
 class ScScannerActivity : BaseActivity() {
     companion object {
@@ -15,38 +15,47 @@ class ScScannerActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // ตรวจสอบให้แน่ใจว่า activity_none มีอยู่จริงใน layout
         setContentView(R.layout.activity_none)
         importQRcode(REQUEST_SCAN)
     }
 
     fun importQRcode(requestCode: Int): Boolean {
+        // ใช้ RxPermissions ที่รองรับ AndroidX
         RxPermissions(this)
-                .request(Manifest.permission.CAMERA)
-                .subscribe {
-                    if (it)
-                        startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
-                    else
-                        toast(R.string.toast_permission_denied)
+            .request(Manifest.permission.CAMERA)
+            .subscribe { granted ->
+                if (granted) {
+                    startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
+                } else {
+                    toast(R.string.toast_permission_denied)
+                    finish() // ปิด Activity หากไม่ได้รับอนุญาต
                 }
-
+            }
         return true
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            REQUEST_SCAN ->
+            REQUEST_SCAN -> {
                 if (resultCode == RESULT_OK) {
-                    val count = AngConfigManager.importBatchConfig(data?.getStringExtra("SCAN_RESULT"), "")
+                    val scanResult = data?.getStringExtra("SCAN_RESULT")
+                    val count = AngConfigManager.importBatchConfig(scanResult, "")
+                    
                     if (count > 0) {
                         toast(R.string.toast_success)
                     } else {
                         toast(R.string.toast_failure)
                     }
-                    startActivity(Intent(this, MainActivity::class.java))
+                    
+                    // นำทางกลับไปที่หน้าหลัก
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
                 }
+                finish()
+            }
         }
-        finish()
     }
-
 }

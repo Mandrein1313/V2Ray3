@@ -2,20 +2,28 @@ package com.v2ray.ang.ui
 
 import android.graphics.Color
 import android.os.Bundle
-import com.v2ray.ang.R
-import android.support.v4.app.Fragment
+// เปลี่ยนจาก import android.support.v4.app.Fragment เป็นตัวนี้:
+import androidx.fragment.app.Fragment 
 import com.v2ray.ang.AppConfig
-import kotlinx.android.synthetic.main.activity_routing_settings.*
-
+import com.v2ray.ang.R
+// ลบ kotlinx.android.synthetic ออก แล้วเพิ่ม ViewBinding:
+import com.v2ray.ang.databinding.ActivityRoutingSettingsBinding
 
 class RoutingSettingsActivity : BaseActivity() {
+    
+    // ประกาศ binding
+    private lateinit var binding: ActivityRoutingSettingsBinding
+    
     private val titles: Array<out String> by lazy {
         resources.getStringArray(R.array.routing_tag)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_routing_settings)
+        
+        // ใช้ ViewBinding แทน setContentView(R.layout...)
+        binding = ActivityRoutingSettingsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         title = getString(R.string.routing_settings_title)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -26,8 +34,10 @@ class RoutingSettingsActivity : BaseActivity() {
         fragments.add(RoutingSettingsFragment().newInstance(AppConfig.PREF_V2RAY_ROUTING_BLOCKED))
 
         val adapter = FragmentAdapter(supportFragmentManager, fragments, titles.toList())
-        viewpager?.adapter = adapter
-        tablayout.setTabTextColors(Color.BLACK, Color.RED)
-        tablayout.setupWithViewPager(viewpager)
+        
+        // เข้าถึง viewpager และ tablayout ผ่าน binding แทนการเรียกผ่าน id ตรงๆ
+        binding.viewpager.adapter = adapter
+        binding.tablayout.setTabTextColors(Color.BLACK, Color.RED)
+        binding.tablayout.setupWithViewPager(binding.viewpager)
     }
 }

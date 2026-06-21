@@ -1,64 +1,55 @@
 package com.v2ray.ang.ui
 
 import android.app.ActivityOptions
-import android.app.FragmentManager
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
-import android.support.design.widget.NavigationView
-import android.support.v4.view.GravityCompat
-import android.support.v4.widget.DrawerLayout
-import android.support.v7.app.ActionBarDrawerToggle
-import android.support.v7.widget.Toolbar
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.FragmentManager
+import com.google.android.material.navigation.NavigationView
 import com.v2ray.ang.R
 
 abstract class BaseDrawerActivity : BaseActivity() {
     companion object {
-
-        private val TAG = "BaseDrawerActivity"
+        private const val TAG = "BaseDrawerActivity"
     }
 
     private var mToolbar: Toolbar? = null
-
     private var mDrawerToggle: ActionBarDrawerToggle? = null
-
     private var mDrawerLayout: DrawerLayout? = null
-
     private var mToolbarInitialized: Boolean = false
-
     private var mItemToOpenWhenDrawerCloses = -1
 
     private val backStackChangedListener = FragmentManager.OnBackStackChangedListener { updateDrawerToggle() }
 
     private val drawerListener = object : DrawerLayout.DrawerListener {
         override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
-            mDrawerToggle!!.onDrawerSlide(drawerView, slideOffset)
+            mDrawerToggle?.onDrawerSlide(drawerView, slideOffset)
         }
 
         override fun onDrawerOpened(drawerView: View) {
-            mDrawerToggle!!.onDrawerOpened(drawerView)
-            //supportActionBar!!.setTitle(R.string.app_name)
+            mDrawerToggle?.onDrawerOpened(drawerView)
         }
 
         override fun onDrawerClosed(drawerView: View) {
-            mDrawerToggle!!.onDrawerClosed(drawerView)
+            mDrawerToggle?.onDrawerClosed(drawerView)
 
             if (mItemToOpenWhenDrawerCloses >= 0) {
                 val extras = ActivityOptions.makeCustomAnimation(
-                        this@BaseDrawerActivity, R.anim.fade_in, R.anim.fade_out).toBundle()
+                    this@BaseDrawerActivity, R.anim.fade_in, R.anim.fade_out
+                ).toBundle()
                 var activityClass: Class<*>? = null
                 when (mItemToOpenWhenDrawerCloses) {
                     R.id.sub_setting -> activityClass = SubSettingActivity::class.java
                     R.id.settings -> activityClass = SettingsActivity::class.java
                     R.id.logcat -> {
                         startActivity(Intent(this@BaseDrawerActivity, LogcatActivity::class.java))
-                        return
-                    }
-                    R.id.donate -> {
-//                        startActivity<InappBuyActivity>()
                         return
                     }
                 }
@@ -70,7 +61,7 @@ abstract class BaseDrawerActivity : BaseActivity() {
         }
 
         override fun onDrawerStateChanged(newState: Int) {
-            mDrawerToggle!!.onDrawerStateChanged(newState)
+            mDrawerToggle?.onDrawerStateChanged(newState)
         }
     }
 
@@ -82,95 +73,85 @@ abstract class BaseDrawerActivity : BaseActivity() {
     override fun onStart() {
         super.onStart()
         if (!mToolbarInitialized) {
-            throw IllegalStateException("You must run super.initializeToolbar at " + "the end of your onCreate method")
+            throw IllegalStateException("You must run super.initializeToolbar at the end of your onCreate method")
         }
     }
 
-    public override fun onResume() {
+    override fun onResume() {
         super.onResume()
-        // Whenever the fragment back stack changes, we may need to update the
-        // action bar toggle: only top level screens show the hamburger-like icon, inner
-        // screens - either Activities or fragments - show the "Up" icon instead.
-        fragmentManager.addOnBackStackChangedListener(backStackChangedListener)
+        supportFragmentManager.addOnBackStackChangedListener(backStackChangedListener)
     }
 
-    public override fun onPause() {
+    override fun onPause() {
         super.onPause()
-        fragmentManager.removeOnBackStackChangedListener(backStackChangedListener)
+        supportFragmentManager.removeOnBackStackChangedListener(backStackChangedListener)
     }
 
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
-        mDrawerToggle!!.syncState()
+        mDrawerToggle?.syncState()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        mDrawerToggle!!.onConfigurationChanged(newConfig)
+        mDrawerToggle?.onConfigurationChanged(newConfig)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (mDrawerToggle != null && mDrawerToggle!!.onOptionsItemSelected(item)) {
+        if (mDrawerToggle?.onOptionsItemSelected(item) == true) {
             return true
         }
-        // If not handled by drawerToggle, home needs to be handled by returning to previous
         if (item.itemId == android.R.id.home) {
-            onBackPressed()
+            onBackPressedDispatcher.onBackPressed()
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
     override fun onBackPressed() {
-        // If the drawer is open, back will close it
-        if (mDrawerLayout != null && mDrawerLayout!!.isDrawerOpen(GravityCompat.START)) {
-            mDrawerLayout!!.closeDrawers()
+        if (mDrawerLayout?.isDrawerOpen(GravityCompat.START) == true) {
+            mDrawerLayout?.closeDrawers()
             return
         }
-        // Otherwise, it may return to the previous fragment stack
-        val fragmentManager = fragmentManager
-        if (fragmentManager.backStackEntryCount > 0) {
-            fragmentManager.popBackStack()
+        val fm = supportFragmentManager
+        if (fm.backStackEntryCount > 0) {
+            fm.popBackStack()
         } else {
-            // Lastly, it will rely on the system behavior for back
             super.onBackPressed()
         }
     }
 
     private fun updateDrawerToggle() {
-        if (mDrawerToggle == null) {
-            return
-        }
-        val isRoot = fragmentManager.backStackEntryCount == 0
-        mDrawerToggle!!.isDrawerIndicatorEnabled = isRoot
+        val toggle = mDrawerToggle ?: return
+        val isRoot = supportFragmentManager.backStackEntryCount == 0
+        toggle.isDrawerIndicatorEnabled = isRoot
 
-        supportActionBar!!.setDisplayShowHomeEnabled(!isRoot)
-        supportActionBar!!.setDisplayHomeAsUpEnabled(!isRoot)
-        supportActionBar!!.setHomeButtonEnabled(!isRoot)
+        supportActionBar?.apply {
+            setDisplayShowHomeEnabled(!isRoot)
+            setDisplayHomeAsUpEnabled(!isRoot)
+            setHomeButtonEnabled(!isRoot)
+        }
 
         if (isRoot) {
-            mDrawerToggle!!.syncState()
+            toggle.syncState()
         }
     }
 
     protected fun initializeToolbar() {
-        mToolbar = findViewById<View>(R.id.toolbar) as Toolbar
-        if (mToolbar == null) {
-            throw IllegalStateException("Layout is required to include a Toolbar with id " + "'toolbar'")
-        }
+        mToolbar = findViewById(R.id.toolbar)
+            ?: throw IllegalStateException("Layout is required to include a Toolbar with id 'toolbar'")
 
-        //        mToolbar.inflateMenu(R.menu.main);
-
-        mDrawerLayout = findViewById<View>(R.id.drawer_layout) as DrawerLayout
+        mDrawerLayout = findViewById(R.id.drawer_layout)
         if (mDrawerLayout != null) {
-            val navigationView = findViewById<View>(R.id.nav_view) as NavigationView
-                    ?: throw IllegalStateException("Layout requires a NavigationView " + "with id 'nav_view'")
+            val navigationView = findViewById<NavigationView>(R.id.nav_view)
+                ?: throw IllegalStateException("Layout requires a NavigationView with id 'nav_view'")
 
-            // Create an ActionBarDrawerToggle that will handle opening/closing of the drawer:
-            mDrawerToggle = ActionBarDrawerToggle(this, mDrawerLayout,
-                    mToolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
+            mDrawerToggle = ActionBarDrawerToggle(
+                this, mDrawerLayout, mToolbar,
+                R.string.navigation_drawer_open, R.string.navigation_drawer_close
+            )
 
-            mDrawerLayout!!.addDrawerListener(drawerListener)
+            mDrawerLayout?.addDrawerListener(drawerListener)
 
             populateDrawerItems(navigationView)
             setSupportActionBar(mToolbar)
@@ -186,7 +167,7 @@ abstract class BaseDrawerActivity : BaseActivity() {
         navigationView.setNavigationItemSelectedListener { menuItem ->
             menuItem.isChecked = true
             mItemToOpenWhenDrawerCloses = menuItem.itemId
-            mDrawerLayout!!.closeDrawers()
+            mDrawerLayout?.closeDrawers()
             true
         }
 

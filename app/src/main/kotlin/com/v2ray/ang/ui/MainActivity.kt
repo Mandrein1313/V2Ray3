@@ -1,25 +1,25 @@
 package com.v2ray.ang.ui
 
 import android.Manifest
-import android.arch.lifecycle.ViewModelProviders
 import android.content.Intent
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
-import android.support.design.widget.NavigationView
-import android.support.v4.view.GravityCompat
-import android.support.v7.app.ActionBarDrawerToggle
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.helper.ItemTouchHelper
 import android.text.TextUtils
-import android.util.Log
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
-import com.tbruyelle.rxpermissions.RxPermissions
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.core.view.GravityCompat
+import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.helper.ItemTouchHelper
+import com.google.android.material.navigation.NavigationView
+import com.tbruyelle.rxpermissions3.RxPermissions
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.BuildConfig
 import com.v2ray.ang.R
+import com.v2ray.ang.databinding.ActivityMainBinding
 import com.v2ray.ang.extension.defaultDPreference
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.helper.SimpleItemTouchHelperCallback
@@ -27,17 +27,18 @@ import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
 import com.v2ray.ang.util.V2rayConfigUtil
 import com.v2ray.ang.viewmodel.MainViewModel
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import libv2ray.Libv2ray
-import rx.Observable
-import rx.android.schedulers.AndroidSchedulers
 import java.net.URL
-import java.util.concurrent.TimeUnit
 
 class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedListener {
+    private lateinit var binding: ActivityMainBinding
+    private val adapter by lazy { MainRecyclerAdapter(this) }
+    private var mItemTouchHelper: ItemTouchHelper? = null
+    private val mainViewModel: MainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
+
     companion object {
         private const val REQUEST_CODE_VPN_PREPARE = 0
         private const val REQUEST_SCAN = 1
@@ -45,17 +46,15 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         private const val REQUEST_SCAN_URL = 3
     }
 
-    private val adapter by lazy { MainRecyclerAdapter(this) }
-    private var mItemTouchHelper: ItemTouchHelper? = null
-    private val mainViewModel: MainViewModel by lazy { ViewModelProviders.of(this).get(MainViewModel::class.java) }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        
         title = getString(R.string.title_server)
-        setSupportActionBar(toolbar)
+        setSupportActionBar(binding.toolbar)
 
-        fab.setOnClickListener {
+        binding.fab.setOnClickListener {
             if (mainViewModel.isRunning.value == true) {
                 Utils.stopVService(this)
             } else if (defaultDPreference.getPrefString(AppConfig.PREF_MODE, "VPN") == "VPN") {
@@ -69,100 +68,72 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 startV2Ray()
             }
         }
-        layout_test.setOnClickListener {
+        
+        binding.layoutTest.setOnClickListener {
             if (mainViewModel.isRunning.value == true) {
-                tv_test_state.text = getString(R.string.connection_test_testing)
+                binding.tvTestState.text = getString(R.string.connection_test_testing)
                 mainViewModel.testCurrentServerRealPing()
-            } else {
-//                tv_test_state.text = getString(R.string.connection_test_fail)
             }
         }
 
-        recycler_view.setHasFixedSize(true)
-        recycler_view.layoutManager = LinearLayoutManager(this)
-        recycler_view.adapter = adapter
+        binding.recyclerView.setHasFixedSize(true)
+        binding.recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.recyclerView.adapter = adapter
 
         val callback = SimpleItemTouchHelperCallback(adapter)
         mItemTouchHelper = ItemTouchHelper(callback)
-        mItemTouchHelper?.attachToRecyclerView(recycler_view)
-
+        mItemTouchHelper?.attachToRecyclerView(binding.recyclerView)
 
         val toggle = ActionBarDrawerToggle(
-                this, drawer_layout, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
-        drawer_layout.addDrawerListener(toggle)
+            this, binding.drawerLayout, binding.toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
+        binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
-        nav_view.setNavigationItemSelectedListener(this)
-        version.text = "v${BuildConfig.VERSION_NAME} (${Libv2ray.checkVersionX()})"
+        
+        binding.navView.setNavigationItemSelectedListener(this)
+        binding.version.text = "v${BuildConfig.VERSION_NAME} (${Libv2ray.checkVersionX()})"
 
         setupViewModelObserver()
     }
 
     private fun setupViewModelObserver() {
-        mainViewModel.updateListAction.observe(this, {
-            val index = it ?: return@observe
-            if (index >= 0) {
-                adapter.updateSelectedItem(index)
+        mainViewModel.updateListAction.observe(this) { index ->
+            if (index != null && index >= 0) adapter.updateSelectedItem(index) 
+            else adapter.updateConfigList()
+        }
+        mainViewModel.updateTestResultAction.observe(this) { binding.tvTestState.text = it }
+        mainViewModel.isRunning.observe(this) { isRunning ->
+            adapter.changeable = !(isRunning ?: false)
+            if (isRunning == true) {
+                binding.fab.setImageResource(R.drawable.ic_v)
+                binding.tvTestState.text = getString(R.string.connection_connected)
             } else {
-                adapter.updateConfigList()
+                binding.fab.setImageResource(R.drawable.ic_v_idle)
+                binding.tvTestState.text = getString(R.string.connection_not_connected)
             }
-        })
-        mainViewModel.updateTestResultAction.observe(this, { tv_test_state.text = it })
-        mainViewModel.isRunning.observe(this, {
-            val isRunning = it ?: return@observe
-            adapter.changeable = !isRunning
-            if (isRunning) {
-                fab.setImageResource(R.drawable.ic_v)
-                tv_test_state.text = getString(R.string.connection_connected)
-            } else {
-                fab.setImageResource(R.drawable.ic_v_idle)
-                tv_test_state.text = getString(R.string.connection_not_connected)
-            }
-            hideCircle()
-        })
+        }
         mainViewModel.startListenBroadcast()
     }
 
     fun startV2Ray() {
-        if (AngConfigManager.configs.index < 0) {
-            return
-        }
-        showCircle()
-//        toast(R.string.toast_services_start)
-        if (!Utils.startVService(this, AngConfigManager.configs.index)) {
-            hideCircle()
-        }
+        if (AngConfigManager.configs.index < 0) return
+        if (!Utils.startVService(this, AngConfigManager.configs.index)) { }
     }
 
-    public override fun onResume() {
+    override fun onResume() {
         super.onResume()
         adapter.updateConfigList()
-    }
-
-    public override fun onPause() {
-        super.onPause()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
-            REQUEST_CODE_VPN_PREPARE ->
-                if (resultCode == RESULT_OK) {
-                    startV2Ray()
-                }
-            REQUEST_SCAN ->
-                if (resultCode == RESULT_OK) {
-                    importBatchConfig(data?.getStringExtra("SCAN_RESULT"))
-                }
+            REQUEST_CODE_VPN_PREPARE -> if (resultCode == RESULT_OK) startV2Ray()
+            REQUEST_SCAN -> if (resultCode == RESULT_OK) importBatchConfig(data?.getStringExtra("SCAN_RESULT"))
             REQUEST_FILE_CHOOSER -> {
                 val uri = data?.data
-                if (resultCode == RESULT_OK && uri != null) {
-                    readContentFromUri(uri)
-                }
+                if (resultCode == RESULT_OK && uri != null) readContentFromUri(uri)
             }
-            REQUEST_SCAN_URL ->
-                if (resultCode == RESULT_OK) {
-                    importConfigCustomUrl(data?.getStringExtra("SCAN_RESULT"))
-                }
+            REQUEST_SCAN_URL -> if (resultCode == RESULT_OK) importConfigCustomUrl(data?.getStringExtra("SCAN_RESULT"))
         }
     }
 
@@ -171,368 +142,116 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         return true
     }
 
-    private fun getOptionIntent() = Intent().putExtra("position", -1)
-            .putExtra("isRunning", mainViewModel.isRunning.value == true)
-
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.import_qrcode -> {
-            importQRcode(REQUEST_SCAN)
-            true
-        }
-        R.id.import_clipboard -> {
-            importClipboard()
-            true
-        }
-        R.id.import_manually_vmess -> {
-            startActivity(getOptionIntent().setClass(this, ServerActivity::class.java))
-            adapter.updateConfigList()
-            true
-        }
-        R.id.import_manually_ss -> {
-            startActivity(getOptionIntent().setClass(this, Server3Activity::class.java))
-            adapter.updateConfigList()
-            true
-        }
-        R.id.import_manually_socks -> {
-            startActivity(getOptionIntent().setClass(this, Server4Activity::class.java))
-            adapter.updateConfigList()
-            true
-        }
-        R.id.import_config_custom_clipboard -> {
-            importConfigCustomClipboard()
-            true
-        }
-        R.id.import_config_custom_local -> {
-            importConfigCustomLocal()
-            true
-        }
-        R.id.import_config_custom_url -> {
-            importConfigCustomUrlClipboard()
-            true
-        }
-        R.id.import_config_custom_url_scan -> {
-            importQRcode(REQUEST_SCAN_URL)
-            true
-        }
-
-//        R.id.sub_setting -> {
-//            startActivity<SubSettingActivity>()
-//            true
-//        }
-
-        R.id.sub_update -> {
-            importConfigViaSub()
-            true
-        }
-
-        R.id.export_all -> {
-            if (AngConfigManager.shareAll2Clipboard() == 0) {
-                //remove toast, otherwise it will block previous warning message
-            } else {
-                toast(R.string.toast_failure)
-            }
-            true
-        }
-
-        R.id.ping_all -> {
-            mainViewModel.testAllTcping()
-            true
-        }
-
-//        R.id.settings -> {
-//            startActivity<SettingsActivity>("isRunning" to isRunning)
-//            true
-//        }
-//        R.id.logcat -> {
-//            startActivity<LogcatActivity>()
-//            true
-//        }
+        R.id.import_qrcode -> { importQRcode(REQUEST_SCAN); true }
+        R.id.import_clipboard -> { importClipboard(); true }
+        R.id.import_manually_vmess -> { startActivity(Intent(this, ServerActivity::class.java).putExtra("position", -1)); adapter.updateConfigList(); true }
+        R.id.import_manually_ss -> { startActivity(Intent(this, Server3Activity::class.java).putExtra("position", -1)); adapter.updateConfigList(); true }
+        R.id.import_manually_socks -> { startActivity(Intent(this, Server4Activity::class.java).putExtra("position", -1)); adapter.updateConfigList(); true }
+        R.id.import_config_custom_clipboard -> { importConfigCustomClipboard(); true }
+        R.id.import_config_custom_local -> { importConfigCustomLocal(); true }
+        R.id.import_config_custom_url -> { importConfigCustomUrlClipboard(); true }
+        R.id.import_config_custom_url_scan -> { importQRcode(REQUEST_SCAN_URL); true }
+        R.id.sub_update -> { importConfigViaSub(); true }
+        R.id.export_all -> { if (AngConfigManager.shareAll2Clipboard() != 0) toast(R.string.toast_failure); true }
+        R.id.ping_all -> { mainViewModel.testAllTcping(); true }
         else -> super.onOptionsItemSelected(item)
     }
 
-
-    /**
-     * import config from qrcode
-     */
     fun importQRcode(requestCode: Int): Boolean {
-//        try {
-//            startActivityForResult(Intent("com.google.zxing.client.android.SCAN")
-//                    .addCategory(Intent.CATEGORY_DEFAULT)
-//                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP), requestCode)
-//        } catch (e: Exception) {
-        RxPermissions(this)
-                .request(Manifest.permission.CAMERA)
-                .subscribe {
-                    if (it)
-                        startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
-                    else
-                        toast(R.string.toast_permission_denied)
-                }
-//        }
+        RxPermissions(this).request(Manifest.permission.CAMERA).subscribe { granted ->
+            if (granted) startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
+            else toast(R.string.toast_permission_denied)
+        }
         return true
     }
 
-    /**
-     * import config from clipboard
-     */
-    fun importClipboard()
-            : Boolean {
-        try {
-            val clipboard = Utils.getClipboard(this)
-            importBatchConfig(clipboard)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
-        }
-        return true
+    fun importClipboard(): Boolean {
+        return try { importBatchConfig(Utils.getClipboard(this)); true } catch (e: Exception) { e.printStackTrace(); false }
     }
 
     fun importBatchConfig(server: String?, subid: String = "") {
-        val count = AngConfigManager.importBatchConfig(server, subid)
-        if (count > 0) {
-            toast(R.string.toast_success)
-            adapter.updateConfigList()
-        } else {
-            toast(R.string.toast_failure)
-        }
+        if (AngConfigManager.importBatchConfig(server, subid) > 0) {
+            toast(R.string.toast_success); adapter.updateConfigList()
+        } else toast(R.string.toast_failure)
     }
 
-    fun importConfigCustomClipboard()
-            : Boolean {
-        try {
-            val configText = Utils.getClipboard(this)
-            if (TextUtils.isEmpty(configText)) {
-                toast(R.string.toast_none_data_clipboard)
-                return false
-            }
-            importCustomizeConfig(configText)
-            return true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
-        }
+    fun importConfigCustomClipboard(): Boolean {
+        val configText = Utils.getClipboard(this)
+        if (TextUtils.isEmpty(configText)) { toast(R.string.toast_none_data_clipboard); return false }
+        importCustomizeConfig(configText); return true
     }
 
-    /**
-     * import config from local config file
-     */
-    fun importConfigCustomLocal(): Boolean {
-        try {
-            showFileChooser()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
-        }
-        return true
+    fun importConfigCustomLocal(): Boolean = try { showFileChooser(); true } catch (e: Exception) { false }
+
+    fun importConfigCustomUrlClipboard(): Boolean {
+        val url = Utils.getClipboard(this)
+        if (TextUtils.isEmpty(url)) { toast(R.string.toast_none_data_clipboard); return false }
+        return importConfigCustomUrl(url)
     }
 
-    fun importConfigCustomUrlClipboard()
-            : Boolean {
-        try {
-            val url = Utils.getClipboard(this)
-            if (TextUtils.isEmpty(url)) {
-                toast(R.string.toast_none_data_clipboard)
-                return false
-            }
-            return importConfigCustomUrl(url)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
-        }
-    }
-
-    /**
-     * import config from url
-     */
     fun importConfigCustomUrl(url: String?): Boolean {
-        try {
-            if (!Utils.isValidUrl(url)) {
-                toast(R.string.toast_invalid_url)
-                return false
-            }
-            GlobalScope.launch(Dispatchers.IO) {
-                val configText = try {
-                    URL(url).readText()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    ""
-                }
-                launch(Dispatchers.Main) {
-                    importCustomizeConfig(configText)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
+        if (!Utils.isValidUrl(url)) { toast(R.string.toast_invalid_url); return false }
+        GlobalScope.launch(Dispatchers.IO) {
+            val configText = try { URL(url).readText() } catch (e: Exception) { "" }
+            launch(Dispatchers.Main) { importCustomizeConfig(configText) }
         }
         return true
     }
 
-    /**
-     * import config from sub
-     */
-    fun importConfigViaSub()
-            : Boolean {
-        try {
-            toast(R.string.title_sub_update)
-            val subItem = AngConfigManager.configs.subItem
-            for (k in 0 until subItem.count()) {
-                if (TextUtils.isEmpty(subItem[k].id)
-                        || TextUtils.isEmpty(subItem[k].remarks)
-                        || TextUtils.isEmpty(subItem[k].url)
-                ) {
-                    continue
-                }
-                val id = subItem[k].id
-                val url = subItem[k].url
-                if (!Utils.isValidUrl(url)) {
-                    continue
-                }
-                Log.d("Main", url)
+    fun importConfigViaSub(): Boolean {
+        toast(R.string.title_sub_update)
+        AngConfigManager.configs.subItem.forEach { sub ->
+            if (!TextUtils.isEmpty(sub.url) && Utils.isValidUrl(sub.url)) {
                 GlobalScope.launch(Dispatchers.IO) {
-                    val configText = try {
-                        URL(url).readText()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        ""
-                    }
-                    launch(Dispatchers.Main) {
-                        importBatchConfig(Utils.decode(configText), id)
-                    }
+                    val configText = try { URL(sub.url).readText() } catch (e: Exception) { "" }
+                    launch(Dispatchers.Main) { importBatchConfig(Utils.decode(configText), sub.id) }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return false
         }
         return true
     }
 
-    /**
-     * show file chooser
-     */
     private fun showFileChooser() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*"
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-
-        try {
-            startActivityForResult(
-                    Intent.createChooser(intent, getString(R.string.title_file_chooser)),
-                    REQUEST_FILE_CHOOSER)
-        } catch (ex: android.content.ActivityNotFoundException) {
-            toast(R.string.toast_require_file_manager)
-        }
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*"; addCategory(Intent.CATEGORY_OPENABLE) }
+        try { startActivityForResult(Intent.createChooser(intent, getString(R.string.title_file_chooser)), REQUEST_FILE_CHOOSER) }
+        catch (ex: Exception) { toast(R.string.toast_require_file_manager) }
     }
 
-    /**
-     * read content from uri
-     */
     private fun readContentFromUri(uri: Uri) {
-        RxPermissions(this)
-                .request(Manifest.permission.READ_EXTERNAL_STORAGE)
-                .subscribe {
-                    if (it) {
-                        try {
-                            contentResolver.openInputStream(uri).use {
-                                val configText = it?.bufferedReader()?.readText()
-                                importCustomizeConfig(configText)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    } else
-                        toast(R.string.toast_permission_denied)
-                }
+        RxPermissions(this).request(Manifest.permission.READ_EXTERNAL_STORAGE).subscribe { granted ->
+            if (granted) {
+                try { contentResolver.openInputStream(uri)?.bufferedReader()?.use { importCustomizeConfig(it.readText()) } }
+                catch (e: Exception) { e.printStackTrace() }
+            } else toast(R.string.toast_permission_denied)
+        }
     }
 
-    /**
-     * import customize config
-     */
     fun importCustomizeConfig(server: String?) {
-        if (server == null) {
-            return
-        }
-        if (!V2rayConfigUtil.isValidConfig(server)) {
-            toast(R.string.toast_config_file_invalid)
-            return
-        }
-        val resId = AngConfigManager.importCustomizeConfig(server)
-        if (resId > 0) {
-            toast(resId)
-        } else {
-            toast(R.string.toast_success)
-            adapter.updateConfigList()
-        }
+        if (server == null || !V2rayConfigUtil.isValidConfig(server)) { toast(R.string.toast_config_file_invalid); return }
+        if (AngConfigManager.importCustomizeConfig(server) > 0) toast(R.string.toast_config_file_invalid)
+        else { toast(R.string.toast_success); adapter.updateConfigList() }
     }
-
-//    val mConnection = object : ServiceConnection {
-//        override fun onServiceDisconnected(name: ComponentName?) {
-//        }
-//
-//        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-//            sendMsg(AppConfig.MSG_REGISTER_CLIENT, "")
-//        }
-//    }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            moveTaskToBack(false)
-            return true
-        }
+        if (keyCode == KeyEvent.KEYCODE_BACK) { moveTaskToBack(false); return true }
         return super.onKeyDown(keyCode, event)
     }
 
-    fun showCircle() {
-        fabProgressCircle?.show()
-    }
-
-    fun hideCircle() {
-        try {
-            Observable.timer(300, TimeUnit.MILLISECONDS)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe {
-                        if (fabProgressCircle.isShown) {
-                            fabProgressCircle.hide()
-                        }
-                    }
-        } catch (e: Exception) {
-        }
-    }
-
     override fun onBackPressed() {
-        if (drawer_layout.isDrawerOpen(GravityCompat.START)) {
-            drawer_layout.closeDrawer(GravityCompat.START)
-        } else {
-            super.onBackPressed()
-        }
+        if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) binding.drawerLayout.closeDrawer(GravityCompat.START)
+        else super.onBackPressed()
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        // Handle navigation view item clicks here.
         when (item.itemId) {
-            //R.id.server_profile -> activityClass = MainActivity::class.java
-            R.id.sub_setting -> {
-                startActivity(Intent(this, SubSettingActivity::class.java))
-            }
-            R.id.settings -> {
-                startActivity(Intent(this, SettingsActivity::class.java)
-                        .putExtra("isRunning", mainViewModel.isRunning.value == true))
-            }
-            R.id.feedback -> {
-                Utils.openUri(this, AppConfig.v2rayNGIssues)
-            }
-            R.id.promotion -> {
-                Utils.openUri(this, AppConfig.promotionUrl)
-            }
-            R.id.donate -> {
-//                startActivity<InappBuyActivity>()
-            }
-            R.id.logcat -> {
-                startActivity(Intent(this, LogcatActivity::class.java))
-            }
+            R.id.sub_setting -> startActivity(Intent(this, SubSettingActivity::class.java))
+            R.id.settings -> startActivity(Intent(this, SettingsActivity::class.java).putExtra("isRunning", mainViewModel.isRunning.value == true))
+            R.id.feedback -> Utils.openUri(this, AppConfig.v2rayNGIssues)
+            R.id.promotion -> Utils.openUri(this, AppConfig.promotionUrl)
+            R.id.logcat -> startActivity(Intent(this, LogcatActivity::class.java))
         }
-        drawer_layout.closeDrawer(GravityCompat.START)
+        binding.drawerLayout.closeDrawer(GravityCompat.START)
         return true
     }
 }

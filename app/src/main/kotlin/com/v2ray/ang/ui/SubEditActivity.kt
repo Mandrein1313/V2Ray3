@@ -1,75 +1,62 @@
 package com.v2ray.ang.ui
 
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
 import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AlertDialog
 import com.v2ray.ang.R
+import com.v2ray.ang.databinding.ActivitySubEditBinding
 import com.v2ray.ang.dto.AngConfig
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
-import kotlinx.android.synthetic.main.activity_sub_edit.*
 
 class SubEditActivity : BaseActivity() {
 
-    var del_config: MenuItem? = null
-    var save_config: MenuItem? = null
+    private lateinit var binding: ActivitySubEditBinding
+
+    private var delConfig: MenuItem? = null
+    private var saveConfig: MenuItem? = null
 
     private lateinit var configs: AngConfig
-    private var edit_index: Int = -1 //当前编辑的
+    private var editIndex: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_sub_edit)
+        binding = ActivitySubEditBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         configs = AngConfigManager.configs
-        edit_index = intent.getIntExtra("position", -1)
+        editIndex = intent.getIntExtra("position", -1)
 
         title = getString(R.string.title_sub_setting)
 
-        if (edit_index >= 0) {
-            bindingServer(configs.subItem[edit_index])
+        if (editIndex >= 0) {
+            bindingServer(configs.subItem[editIndex])
         } else {
             clearServer()
         }
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
-    /**
-     * bingding seleced server config
-     */
-    fun bindingServer(subItem: AngConfig.SubItemBean): Boolean {
-        et_remarks.text = Utils.getEditable(subItem.remarks)
-        et_url.text = Utils.getEditable(subItem.url)
-
+    private fun bindingServer(subItem: AngConfig.SubItemBean): Boolean {
+        binding.etRemarks.text = Utils.getEditable(subItem.remarks)
+        binding.etUrl.text = Utils.getEditable(subItem.url)
         return true
     }
 
-    /**
-     * clear or init server config
-     */
-    fun clearServer(): Boolean {
-        et_remarks.text = null
-        et_url.text = null
-
+    private fun clearServer(): Boolean {
+        binding.etRemarks.text = null
+        binding.etUrl.text = null
         return true
     }
 
-    /**
-     * save server config
-     */
-    fun saveServer(): Boolean {
-        val subItem: AngConfig.SubItemBean
-        if (edit_index >= 0) {
-            subItem = configs.subItem[edit_index]
-        } else {
-            subItem = AngConfig.SubItemBean()
-        }
+    private fun saveServer(): Boolean {
+        val subItem = if (editIndex >= 0) configs.subItem[editIndex] else AngConfig.SubItemBean()
 
-        subItem.remarks = et_remarks.text.toString()
-        subItem.url = et_url.text.toString()
+        subItem.remarks = binding.etRemarks.text.toString()
+        subItem.url = binding.etUrl.text.toString()
 
         if (TextUtils.isEmpty(subItem.remarks)) {
             toast(R.string.sub_setting_remarks)
@@ -80,7 +67,7 @@ class SubEditActivity : BaseActivity() {
             return false
         }
 
-        if (AngConfigManager.addSubItem(subItem, edit_index) == 0) {
+        if (AngConfigManager.addSubItem(subItem, editIndex) == 0) {
             toast(R.string.toast_success)
             finish()
             return true
@@ -90,36 +77,32 @@ class SubEditActivity : BaseActivity() {
         }
     }
 
-    /**
-     * save server config
-     */
-    fun deleteServer(): Boolean {
-        if (edit_index >= 0) {
-            AlertDialog.Builder(this).setMessage(R.string.del_config_comfirm)
-                    .setPositiveButton(android.R.string.ok) { _, _ ->
-                        if (AngConfigManager.removeSubItem(edit_index) == 0) {
-                            toast(R.string.toast_success)
-                            finish()
-                        } else {
-                            toast(R.string.toast_failure)
-                        }
+    private fun deleteServer(): Boolean {
+        if (editIndex >= 0) {
+            AlertDialog.Builder(this)
+                .setMessage(R.string.del_config_comfirm)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    if (AngConfigManager.removeSubItem(editIndex) == 0) {
+                        toast(R.string.toast_success)
+                        finish()
+                    } else {
+                        toast(R.string.toast_failure)
                     }
-                    .show()
-        } else {
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
         return true
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.action_server, menu)
-        del_config = menu?.findItem(R.id.del_config)
-        save_config = menu?.findItem(R.id.save_config)
+        delConfig = menu?.findItem(R.id.del_config)
+        saveConfig = menu?.findItem(R.id.save_config)
 
-        if (edit_index >= 0) {
-        } else {
-            del_config?.isVisible = false
+        if (editIndex < 0) {
+            delConfig?.isVisible = false
         }
-
         return super.onCreateOptionsMenu(menu)
     }
 

@@ -1,28 +1,26 @@
 package com.v2ray.ang.ui
 
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
 import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AlertDialog
 import com.v2ray.ang.R
+import com.v2ray.ang.databinding.ActivityServer3Binding
 import com.v2ray.ang.dto.AngConfig
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
-import kotlinx.android.synthetic.main.activity_server3.*
 
 class Server3Activity : BaseActivity() {
-    companion object {
-        private const val REQUEST_SCAN = 1
-    }
+    private lateinit var binding: ActivityServer3Binding
 
-    var del_config: MenuItem? = null
-    var save_config: MenuItem? = null
+    var delConfig: MenuItem? = null
+    var saveConfig: MenuItem? = null
 
     private lateinit var configs: AngConfig
-    private var edit_index: Int = -1 //当前编辑的服务器
-    private var edit_guid: String = ""
+    private var editIndex: Int = -1
+    private var editGuid: String = ""
     private var isRunning: Boolean = false
     private val securitys: Array<out String> by lazy {
         resources.getStringArray(R.array.ss_securitys)
@@ -30,69 +28,54 @@ class Server3Activity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_server3)
+        binding = ActivityServer3Binding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         configs = AngConfigManager.configs
-        edit_index = intent.getIntExtra("position", -1)
+        editIndex = intent.getIntExtra("position", -1)
         isRunning = intent.getBooleanExtra("isRunning", false)
         title = getString(R.string.title_server)
 
-        if (edit_index >= 0) {
-            edit_guid = configs.vmess[edit_index].guid
-            bindingServer(configs.vmess[edit_index])
+        if (editIndex >= 0) {
+            editGuid = configs.vmess[editIndex].guid
+            bindingServer(configs.vmess[editIndex])
         } else {
             clearServer()
         }
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
-    /**
-     * bingding seleced server config
-     */
-    fun bindingServer(vmess: AngConfig.VmessBean): Boolean {
-        et_remarks.text = Utils.getEditable(vmess.remarks)
-
-        et_address.text = Utils.getEditable(vmess.address)
-        et_port.text = Utils.getEditable(vmess.port.toString())
-        et_id.text = Utils.getEditable(vmess.id)
+    private fun bindingServer(vmess: AngConfig.VmessBean): Boolean {
+        binding.etRemarks.text = Utils.getEditable(vmess.remarks)
+        binding.etAddress.text = Utils.getEditable(vmess.address)
+        binding.etPort.text = Utils.getEditable(vmess.port.toString())
+        binding.etId.text = Utils.getEditable(vmess.id)
+        
         val security = Utils.arrayFind(securitys, vmess.security)
         if (security >= 0) {
-            sp_security.setSelection(security)
+            binding.spSecurity.setSelection(security)
         }
-
         return true
     }
 
-    /**
-     * clear or init server config
-     */
-    fun clearServer(): Boolean {
-        et_remarks.text = null
-        et_address.text = null
-        et_port.text = Utils.getEditable("10086")
-        et_id.text = null
-        sp_security.setSelection(0)
-
+    private fun clearServer(): Boolean {
+        binding.etRemarks.text = null
+        binding.etAddress.text = null
+        binding.etPort.text = Utils.getEditable("10086")
+        binding.etId.text = null
+        binding.spSecurity.setSelection(0)
         return true
     }
 
-    /**
-     * save server config
-     */
-    fun saveServer(): Boolean {
-        val vmess: AngConfig.VmessBean
-        if (edit_index >= 0) {
-            vmess = configs.vmess[edit_index]
-        } else {
-            vmess = AngConfig.VmessBean()
-        }
+    private fun saveServer(): Boolean {
+        val vmess = if (editIndex >= 0) configs.vmess[editIndex] else AngConfig.VmessBean()
 
-        vmess.guid = edit_guid
-        vmess.remarks = et_remarks.text.toString()
-        vmess.address = et_address.text.toString()
-        vmess.port = Utils.parseInt(et_port.text.toString())
-        vmess.id = et_id.text.toString()
-        vmess.security = securitys[sp_security.selectedItemPosition]
+        vmess.guid = editGuid
+        vmess.remarks = binding.etRemarks.text.toString()
+        vmess.address = binding.etAddress.text.toString()
+        vmess.port = Utils.parseInt(binding.etPort.text.toString())
+        vmess.id = binding.etId.text.toString()
+        vmess.security = securitys[binding.spSecurity.selectedItemPosition]
 
         if (TextUtils.isEmpty(vmess.remarks)) {
             toast(R.string.server_lab_remarks)
@@ -102,7 +85,7 @@ class Server3Activity : BaseActivity() {
             toast(R.string.server_lab_address3)
             return false
         }
-        if (TextUtils.isEmpty(vmess.port.toString()) || vmess.port <= 0) {
+        if (vmess.port <= 0) {
             toast(R.string.server_lab_port3)
             return false
         }
@@ -111,8 +94,8 @@ class Server3Activity : BaseActivity() {
             return false
         }
 
-        if (AngConfigManager.addShadowsocksServer(vmess, edit_index) == 0) {
-            AngConfigManager.genStoreV2rayConfigIfActive(edit_index)
+        if (AngConfigManager.addShadowsocksServer(vmess, editIndex) == 0) {
+            AngConfigManager.genStoreV2rayConfigIfActive(editIndex)
             toast(R.string.toast_success)
             finish()
             return true
@@ -122,40 +105,33 @@ class Server3Activity : BaseActivity() {
         }
     }
 
-    /**
-     * save server config
-     */
-    fun deleteServer(): Boolean {
-        if (edit_index >= 0) {
-            AlertDialog.Builder(this).setMessage(R.string.del_config_comfirm)
-                    .setPositiveButton(android.R.string.ok) { _, _ ->
-                        if (AngConfigManager.removeServer(edit_index) == 0) {
-                            toast(R.string.toast_success)
-                            finish()
-                        } else {
-                            toast(R.string.toast_failure)
-                        }
+    private fun deleteServer(): Boolean {
+        if (editIndex >= 0) {
+            AlertDialog.Builder(this)
+                .setMessage(R.string.del_config_comfirm)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    if (AngConfigManager.removeServer(editIndex) == 0) {
+                        toast(R.string.toast_success)
+                        finish()
+                    } else {
+                        toast(R.string.toast_failure)
                     }
-                    .show()
-        } else {
+                }
+                .show()
         }
         return true
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.action_server, menu)
-        del_config = menu?.findItem(R.id.del_config)
-        save_config = menu?.findItem(R.id.save_config)
+        delConfig = menu?.findItem(R.id.del_config)
+        saveConfig = menu?.findItem(R.id.save_config)
 
-        if (edit_index >= 0) {
-            if (isRunning) {
-                if (edit_index == configs.index) {
-                    del_config?.isVisible = false
-                    save_config?.isVisible = false
-                }
-            }
-        } else {
-            del_config?.isVisible = false
+        if (editIndex >= 0 && isRunning && editIndex == configs.index) {
+            delConfig?.isVisible = false
+            saveConfig?.isVisible = false
+        } else if (editIndex < 0) {
+            delConfig?.isVisible = false
         }
 
         return super.onCreateOptionsMenu(menu)
