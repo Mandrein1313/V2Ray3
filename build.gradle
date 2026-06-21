@@ -5,12 +5,7 @@ plugins {
 }
 
 allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        mavenLocal()
-        maven { url 'https://jitpack.io' }   // ถ้าใช้ library บางตัว
-    }
+    // repositories ย้ายไป settings.gradle แล้ว
 }
 
 task clean(type: Delete) {
