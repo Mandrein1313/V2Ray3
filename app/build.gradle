@@ -63,10 +63,12 @@ dependencies {
     implementation 'androidx.activity:activity-ktx:1.9.0'
     implementation 'androidx.fragment:fragment-ktx:1.8.0'
 
-    // RxJava 2 (แนะนำใช้เวอร์ชัน 2 เพื่อความเข้ากันได้กับโค้ดเดิม)
+    // RxJava 2
     implementation 'io.reactivex.rxjava2:rxjava:2.2.21'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-    implementation 'com.github.tbruyelle:rxpermissions:0.12'
+    
+    // ✅ แก้ไข: เปลี่ยนเวอร์ชัน rxpermissions จาก 0.12 เป็น 0.13.1
+    implementation 'com.github.tbruyelle:rxpermissions:0.13.1'
 
     // QR Code Scanner
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
@@ -79,11 +81,12 @@ dependencies {
     implementation 'androidx.annotation:annotation:1.8.0'
 }
 
+// ✅ แก้ไข: จัดลำดับ repositories ให้ JitPack มาก่อน flatDir
 repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://jitpack.io' }  // ย้ายมาอยู่บนสุด (รองรับ rxpermissions)
     flatDir {
         dirs 'libs'
     }
-    google()
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
 }
