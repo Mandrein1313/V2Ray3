@@ -9,13 +9,13 @@ import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.core.view.GravityCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.helper.ItemTouchHelper
 import com.google.android.material.navigation.NavigationView
-import com.tbruyelle.rxpermissions3.RxPermissions
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.BuildConfig
 import com.v2ray.ang.R
@@ -38,6 +38,42 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
     private val adapter by lazy { MainRecyclerAdapter(this) }
     private var mItemTouchHelper: ItemTouchHelper? = null
     private val mainViewModel: MainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
+
+    // ตัวแปรเก็บ requestCode และ Uri ขณะรอ permission
+    private var pendingRequestCode: Int = -1
+    private var pendingUri: Uri? = null
+
+    // Launcher สำหรับขอสิทธิ์กล้อง (CAMERA)
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // เปิด ScannerActivity ด้วย requestCode ที่เก็บไว้
+            startActivityForResult(Intent(this, ScannerActivity::class.java), pendingRequestCode)
+        } else {
+            toast(R.string.toast_permission_denied)
+        }
+    }
+
+    // Launcher สำหรับขอสิทธิ์อ่าน Storage (READ_EXTERNAL_STORAGE)
+    private val storagePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pendingUri?.let { uri ->
+                try {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                        importCustomizeConfig(reader.readText())
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    toast(R.string.toast_failure)
+                }
+            }
+        } else {
+            toast(R.string.toast_permission_denied)
+        }
+    }
 
     companion object {
         private const val REQUEST_CODE_VPN_PREPARE = 0
@@ -158,11 +194,10 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         else -> super.onOptionsItemSelected(item)
     }
 
+    // เปลี่ยนจากใช้ RxPermissions เป็น cameraPermissionLauncher
     fun importQRcode(requestCode: Int): Boolean {
-        RxPermissions(this).request(Manifest.permission.CAMERA).subscribe { granted ->
-            if (granted) startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
-            else toast(R.string.toast_permission_denied)
-        }
+        pendingRequestCode = requestCode
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         return true
     }
 
@@ -218,13 +253,10 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         catch (ex: Exception) { toast(R.string.toast_require_file_manager) }
     }
 
+    // เปลี่ยนจากใช้ RxPermissions เป็น storagePermissionLauncher
     private fun readContentFromUri(uri: Uri) {
-        RxPermissions(this).request(Manifest.permission.READ_EXTERNAL_STORAGE).subscribe { granted ->
-            if (granted) {
-                try { contentResolver.openInputStream(uri)?.bufferedReader()?.use { importCustomizeConfig(it.readText()) } }
-                catch (e: Exception) { e.printStackTrace() }
-            } else toast(R.string.toast_permission_denied)
-        }
+        pendingUri = uri
+        storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
     }
 
     fun importCustomizeConfig(server: String?) {
