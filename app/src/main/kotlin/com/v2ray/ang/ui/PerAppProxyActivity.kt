@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.os.Bundle
 import android.text.TextUtils
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -16,8 +15,8 @@ import android.view.inputmethod.InputMethodManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import io.reactivex.android.schedulers.AndroidSchedulers  // ✅ เปลี่ยน import
-import io.reactivex.schedulers.Schedulers               // ✅ เปลี่ยน import
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.schedulers.Schedulers
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ActivityBypassListBinding
@@ -56,12 +55,14 @@ class PerAppProxyActivity : BaseActivity() {
 
         val blacklist = defaultDPreference.getPrefStringSet(PREF_PER_APP_PROXY_SET, null)
 
-        // ✅ เปลี่ยนเป็น RxJava2: subscribe รับ onNext และ onError
         AppManagerUtil.rxLoadNetworkAppList(this)
             .subscribeOn(Schedulers.io())
             .map { list ->
                 if (blacklist != null) {
-                    list.forEach { it.isSelected = if (blacklist.contains(it.packageName)) 1 else 0 }
+                    // ✅ ใช้ forEach แทน map แล้วแก้ไข isSelected โดยตรง
+                    list.forEach { app ->
+                        app.isSelected = if (blacklist.contains(app.packageName)) 1 else 0
+                    }
                     list.sortedWith(compareByDescending { it.isSelected })
                 } else {
                     val collator = Collator.getInstance()
@@ -139,7 +140,7 @@ class PerAppProxyActivity : BaseActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_bypass_list, menu)
-        return true  // ✅ แก้ไข: คืนค่า true
+        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {

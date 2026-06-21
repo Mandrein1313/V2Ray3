@@ -193,7 +193,6 @@ class KAlertDialogBuilder(val ctx: Context) {
         builder.setOnCancelListener { f() }
     }
 
-    // ✅ แก้ไข: ระบุ type parameters ให้ชัดเจน
     fun onKey(f: (keyCode: Int, e: KeyEvent) -> Boolean) {
         builder.setOnKeyListener { _: DialogInterface, keyCode: Int, event: KeyEvent ->
             f(keyCode, event)
@@ -228,7 +227,6 @@ class KAlertDialogBuilder(val ctx: Context) {
         items(ctx.resources!!.getTextArray(itemsId), f)
     }
 
-    // ✅ แก้ไข: ระบุ type parameters ให้ชัดเจน
     fun items(items: List<CharSequence>, f: (which: Int) -> Unit) {
         items(items.toTypedArray(), f)
     }
@@ -241,7 +239,8 @@ class KAlertDialogBuilder(val ctx: Context) {
         builder.setAdapter(adapter) { _: DialogInterface, which: Int -> f(which) }
     }
 
+    // ✅ แก้ไขบรรทัด 245: ใส่วงเล็บและพารามิเตอร์ให้ถูกต้อง
     fun adapter(cursor: Cursor, labelColumn: String, f: (which: Int) -> Unit) {
-        builder.setCursor(cursor) { _: DialogInterface, which: Int -> f(which) }, labelColumn
+        builder.setCursor(cursor, { _: DialogInterface, which: Int -> f(which) }, labelColumn)
     }
 }
