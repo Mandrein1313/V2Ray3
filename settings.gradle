@@ -7,13 +7,12 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    // ใช้แบบ FAIL_ON_PROJECT_REPOS เพื่อความสะอาดของโปรเจกต์
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // เปลี่ยนจาก FAIL_ON_PROJECT_REPOS เป็น PREFER_SETTINGS เพื่อให้มั่นใจว่าที่นี่สำคัญที่สุด
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
         maven { url 'https://jitpack.io' }
-        flatDir { dirs 'libs' } // ย้ายมาจาก build.gradle มาไว้ที่นี่
     }
 }
 

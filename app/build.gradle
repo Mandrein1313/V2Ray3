@@ -34,6 +34,7 @@ android {
 
     buildFeatures {
         viewBinding true
+        dataBinding true // เพิ่มบรรทัดนี้ เพื่อแก้ไข Error dataBindingMergeDependencyArtifactsDebug
     }
 
     sourceSets {
@@ -42,10 +43,7 @@ android {
 }
 
 dependencies {
-    // 1. ใช้ fileTree สำหรับ .jar ทั่วไป
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    
-    // 2. ระบุไฟล์ .aar โดยตรงเพื่อป้องกันปัญหา Cloud Build หาไม่เจอ
     implementation files('libs/libv2ray.aar')
 
     // Kotlin
@@ -71,7 +69,10 @@ dependencies {
 
     // External Libraries
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
-    implementation 'com.github.tbruyelle:rxpermissions:0.12'
+    
+    // เปลี่ยนมาใช้เวอร์ชัน 0.10.2 ชั่วคราวเพื่อความเสถียรบน JitPack
+    implementation 'com.github.tbruyelle:rxpermissions:0.10.2' 
+    
     implementation 'io.reactivex.rxjava3:rxjava:3.1.8'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
 
