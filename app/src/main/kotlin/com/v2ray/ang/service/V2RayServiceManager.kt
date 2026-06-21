@@ -10,9 +10,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.os.Build
-import android.support.annotation.RequiresApi
-import android.support.v4.app.NotificationCompat
 import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.AppConfig.TAG_DIRECT
 import com.v2ray.ang.R
@@ -25,11 +25,11 @@ import com.v2ray.ang.ui.SettingsActivity
 import com.v2ray.ang.util.MessageUtil
 import com.v2ray.ang.util.Utils
 import go.Seq
+import io.reactivex.Observable
+import io.reactivex.disposables.Disposable
 import libv2ray.Libv2ray
 import libv2ray.V2RayPoint
 import libv2ray.V2RayVPNServiceSupportsSet
-import rx.Observable
-import rx.Subscription
 import java.lang.ref.SoftReference
 import kotlin.math.min
 
@@ -56,13 +56,13 @@ object V2RayServiceManager {
 
     private var lastQueryTime = 0L
     private var mBuilder: NotificationCompat.Builder? = null
-    private var mSubscription: Subscription? = null
+    private var mDisposable: Disposable? = null  // ✅ เปลี่ยนจาก Subscription เป็น Disposable
     private var mNotificationManager: NotificationManager? = null
 
     fun startV2Ray(context: Context) {
         if (context.v2RayApplication.defaultDPreference.getPrefBoolean(SettingsActivity.PREF_PROXY_SHARING, false)) {
             context.toast(R.string.toast_warning_pref_proxysharing_short)
-        }else{
+        } else {
             context.toast(R.string.toast_services_start)
         }
         val intent = if (context.v2RayApplication.defaultDPreference.getPrefString(AppConfig.PREF_MODE, "VPN") == "VPN") {
@@ -118,7 +118,6 @@ object V2RayServiceManager {
                 -1
             }
         }
-
     }
 
     fun startV2rayPoint() {
@@ -222,40 +221,35 @@ object V2RayServiceManager {
         val service = serviceControl?.get()?.getService() ?: return
         val startMainIntent = Intent(service, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(service,
-                NOTIFICATION_PENDING_INTENT_CONTENT, startMainIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT)
+            NOTIFICATION_PENDING_INTENT_CONTENT, startMainIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val stopV2RayIntent = Intent(AppConfig.BROADCAST_ACTION_SERVICE)
         stopV2RayIntent.`package` = AppConfig.ANG_PACKAGE
         stopV2RayIntent.putExtra("key", AppConfig.MSG_STATE_STOP)
 
         val stopV2RayPendingIntent = PendingIntent.getBroadcast(service,
-                NOTIFICATION_PENDING_INTENT_STOP_V2RAY, stopV2RayIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT)
+            NOTIFICATION_PENDING_INTENT_STOP_V2RAY, stopV2RayIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val channelId =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    createNotificationChannel()
-                } else {
-                    // If earlier version channel ID is not used
-                    // https://developer.android.com/reference/android/support/v4/app/NotificationCompat.Builder.html#NotificationCompat.Builder(android.content.Context)
-                    ""
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                createNotificationChannel()
+            } else {
+                ""
+            }
 
         mBuilder = NotificationCompat.Builder(service, channelId)
-                .setSmallIcon(R.drawable.ic_v)
-                .setContentTitle(currentConfigName)
-                .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setOngoing(true)
-                .setShowWhen(false)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(contentPendingIntent)
-                .addAction(R.drawable.ic_close_grey_800_24dp,
-                        service.getString(R.string.notification_action_stop_v2ray),
-                        stopV2RayPendingIntent)
-        //.build()
-
-        //mBuilder?.setDefaults(NotificationCompat.FLAG_ONLY_ALERT_ONCE)  //取消震动,铃声其他都不好使
+            .setSmallIcon(R.drawable.ic_v)
+            .setContentTitle(currentConfigName)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(contentPendingIntent)
+            .addAction(R.drawable.ic_close_grey_800_24dp,
+                service.getString(R.string.notification_action_stop_v2ray),
+                stopV2RayPendingIntent)
 
         service.startForeground(NOTIFICATION_ID, mBuilder?.build())
     }
@@ -265,7 +259,7 @@ object V2RayServiceManager {
         val channelId = "RAY_NG_M_CH_ID"
         val channelName = "V2rayNG Background Service"
         val chan = NotificationChannel(channelId,
-                channelName, NotificationManager.IMPORTANCE_HIGH)
+            channelName, NotificationManager.IMPORTANCE_HIGH)
         chan.lightColor = Color.DKGRAY
         chan.importance = NotificationManager.IMPORTANCE_NONE
         chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
@@ -277,8 +271,8 @@ object V2RayServiceManager {
         val service = serviceControl?.get()?.getService() ?: return
         service.stopForeground(true)
         mBuilder = null
-        mSubscription?.unsubscribe()
-        mSubscription = null
+        mDisposable?.dispose()  // ✅ ใช้ dispose() แทน unsubscribe()
+        mDisposable = null
     }
 
     private fun updateNotification(contentText: String, proxyTraffic: Long, directTraffic: Long) {
@@ -306,41 +300,45 @@ object V2RayServiceManager {
 
     fun startSpeedNotification() {
         val service = serviceControl?.get()?.getService() ?: return
-        if (mSubscription == null &&
-                v2rayPoint.isRunning &&
-                service.defaultDPreference.getPrefBoolean(SettingsActivity.PREF_SPEED_ENABLED, false)) {
+        if (mDisposable == null &&
+            v2rayPoint.isRunning &&
+            service.defaultDPreference.getPrefBoolean(SettingsActivity.PREF_SPEED_ENABLED, false)) {
             var lastZeroSpeed = false
             val outboundTags = service.defaultDPreference.getPrefStringOrderedSet(AppConfig.PREF_CURR_CONFIG_OUTBOUND_TAGS, LinkedHashSet())
             outboundTags.remove(TAG_DIRECT)
 
-            mSubscription = Observable.interval(3, java.util.concurrent.TimeUnit.SECONDS)
-                    .subscribe {
-                        val queryTime = System.currentTimeMillis()
-                        val sinceLastQueryInSeconds = (queryTime - lastQueryTime) / 1000.0
-                        var proxyTotal = 0L
-                        val text = StringBuilder()
-                        outboundTags.forEach {
-                            val up = v2rayPoint.queryStats(it, "uplink")
-                            val down = v2rayPoint.queryStats(it, "downlink")
-                            if (up + down > 0) {
-                                appendSpeedString(text, it, up / sinceLastQueryInSeconds, down / sinceLastQueryInSeconds)
-                                proxyTotal += up + down
-                            }
+            // ✅ เปลี่ยนเป็น RxJava2: Observable.interval() และ dispose()
+            mDisposable = Observable.interval(3, java.util.concurrent.TimeUnit.SECONDS)
+                .subscribe({
+                    val queryTime = System.currentTimeMillis()
+                    val sinceLastQueryInSeconds = (queryTime - lastQueryTime) / 1000.0
+                    var proxyTotal = 0L
+                    val text = StringBuilder()
+                    outboundTags.forEach {
+                        val up = v2rayPoint.queryStats(it, "uplink")
+                        val down = v2rayPoint.queryStats(it, "downlink")
+                        if (up + down > 0) {
+                            appendSpeedString(text, it, up / sinceLastQueryInSeconds, down / sinceLastQueryInSeconds)
+                            proxyTotal += up + down
                         }
-                        val directUplink = v2rayPoint.queryStats(TAG_DIRECT, "uplink")
-                        val directDownlink = v2rayPoint.queryStats(TAG_DIRECT, "downlink")
-                        val zeroSpeed = (proxyTotal == 0L && directUplink == 0L && directDownlink == 0L)
-                        if (!zeroSpeed || !lastZeroSpeed) {
-                            if (proxyTotal == 0L) {
-                                appendSpeedString(text, outboundTags.firstOrNull(), 0.0, 0.0)
-                            }
-                            appendSpeedString(text, TAG_DIRECT, directUplink / sinceLastQueryInSeconds,
-                                    directDownlink / sinceLastQueryInSeconds)
-                            updateNotification(text.toString(), proxyTotal, directDownlink + directUplink)
-                        }
-                        lastZeroSpeed = zeroSpeed
-                        lastQueryTime = queryTime
                     }
+                    val directUplink = v2rayPoint.queryStats(TAG_DIRECT, "uplink")
+                    val directDownlink = v2rayPoint.queryStats(TAG_DIRECT, "downlink")
+                    val zeroSpeed = (proxyTotal == 0L && directUplink == 0L && directDownlink == 0L)
+                    if (!zeroSpeed || !lastZeroSpeed) {
+                        if (proxyTotal == 0L) {
+                            appendSpeedString(text, outboundTags.firstOrNull(), 0.0, 0.0)
+                        }
+                        appendSpeedString(text, TAG_DIRECT, directUplink / sinceLastQueryInSeconds,
+                            directDownlink / sinceLastQueryInSeconds)
+                        updateNotification(text.toString(), proxyTotal, directDownlink + directUplink)
+                    }
+                    lastZeroSpeed = zeroSpeed
+                    lastQueryTime = queryTime
+                }, {
+                    // onError
+                    it.printStackTrace()
+                })
         }
     }
 
@@ -355,9 +353,9 @@ object V2RayServiceManager {
     }
 
     fun stopSpeedNotification() {
-        if (mSubscription != null) {
-            mSubscription?.unsubscribe() //stop queryStats
-            mSubscription = null
+        if (mDisposable != null) {
+            mDisposable?.dispose()  // ✅ ใช้ dispose() แทน unsubscribe()
+            mDisposable = null
             updateNotification(currentConfigName, 0, 0)
         }
     }

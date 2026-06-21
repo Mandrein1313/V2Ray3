@@ -3,6 +3,7 @@ package com.v2ray.ang
 import android.content.SharedPreferences
 import androidx.multidex.MultiDexApplication
 import androidx.preference.PreferenceManager
+import com.v2ray.ang.BuildConfig  // ✅ เพิ่ม import นี้
 import com.v2ray.ang.util.AngConfigManager
 import me.dozen.dpreference.DPreference
 

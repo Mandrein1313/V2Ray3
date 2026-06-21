@@ -8,8 +8,8 @@ import android.net.*
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.StrictMode
-import android.support.annotation.RequiresApi
 import android.util.Log
+import androidx.annotation.RequiresApi  // ✅ เปลี่ยน import
 import com.v2ray.ang.R
 import com.v2ray.ang.extension.defaultDPreference
 import com.v2ray.ang.ui.PerAppProxyActivity
@@ -33,7 +33,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
         *
         * Source: https://android.googlesource.com/platform/frameworks/base/+/2df4c7d/services/core/java/com/android/server/ConnectivityService.java#887
         */
-    @delegate:RequiresApi(Build.VERSION_CODES.P)
+    @RequiresApi(Build.VERSION_CODES.P)  // ✅ เปลี่ยนเป็น annotation ปกติ
     private val defaultNetworkRequest by lazy {
         NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -43,7 +43,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
 
     private val connectivity by lazy { getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
 
-    @delegate:RequiresApi(Build.VERSION_CODES.P)
+    @RequiresApi(Build.VERSION_CODES.P)  // ✅ เปลี่ยนเป็น annotation ปกติ
     private val defaultNetworkCallback by lazy {
         object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
@@ -251,5 +251,4 @@ class V2RayVpnService : VpnService(), ServiceControl {
     override fun vpnProtect(socket: Int): Boolean {
         return protect(socket)
     }
-
 }

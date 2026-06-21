@@ -65,7 +65,7 @@ class LogcatActivity : BaseActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_logcat, menu)
-        return super.onCreate(menu)
+        return true  // ✅ แก้ไข: คืนค่า true แทน super.onCreate(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {

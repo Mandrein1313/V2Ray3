@@ -3,9 +3,9 @@ package com.v2ray.ang.extension
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
+import androidx.core.widget.ToastCompat  // ✅ เปลี่ยน import
 import com.v2ray.ang.AngApplication
 import me.dozen.dpreference.DPreference
-import me.drakeet.support.toast.ToastCompat
 import org.json.JSONObject
 import java.net.URLConnection
 
