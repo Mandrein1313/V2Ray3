@@ -12,7 +12,6 @@
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
 
-    <!-- https://developer.android.com/about/versions/11/privacy/package-visibility -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
@@ -20,7 +19,6 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <!-- <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -31,7 +29,6 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:extractNativeLibs="true"
         android:theme="@style/AppTheme"
         tools:targetApi="31">
 
@@ -75,11 +72,12 @@
             android:process=":RunSoLibV2RayDaemon"
             android:theme="@style/AppTheme.NoActionBar.Translucent" />
 
-        <!-- Tasker -->
+        <!-- Tasker Activity -->
         <activity
             android:name=".ui.TaskerActivity"
             android:icon="@mipmap/ic_launcher"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:exported="true">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
@@ -112,8 +110,10 @@
             android:label="@string/app_name"
             android:process=":RunSoLibV2RayDaemon" />
 
+        <!-- Widget Receiver -->
         <receiver
             android:name=".receiver.WidgetProvider"
+            android:exported="true"
             android:process=":RunSoLibV2RayDaemon">
             <meta-data
                 android:name="android.appwidget.provider"
@@ -125,19 +125,23 @@
             </intent-filter>
         </receiver>
 
+        <!-- QS Tile Service -->
         <service
             android:name=".service.QSTileService"
             android:icon="@drawable/ic_v"
             android:label="@string/app_tile_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true"
             android:process=":RunSoLibV2RayDaemon">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
 
+        <!-- Tasker Receiver -->
         <receiver
             android:name=".receiver.TaskerReceiver"
+            android:exported="true"
             android:process=":RunSoLibV2RayDaemon">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
