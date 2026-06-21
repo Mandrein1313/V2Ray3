@@ -7,12 +7,11 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    // เปลี่ยนจาก FAIL_ON_PROJECT_REPOS เป็น PREFER_SETTINGS เพื่อให้มั่นใจว่าที่นี่สำคัญที่สุด
-    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        maven { url 'https://jitpack.io' }   // ← ต้องมีบรรทัดนี้
     }
 }
 
