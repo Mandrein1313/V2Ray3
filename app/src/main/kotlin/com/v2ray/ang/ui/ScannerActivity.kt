@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View  // ✅ เพิ่ม import นี้
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.Result
@@ -19,7 +20,6 @@ class ScannerActivity : BaseActivity(), ZXingScannerView.ResultHandler {
 
     private var mScannerView: ZXingScannerView? = null
 
-    // Launcher สำหรับขอสิทธิ์อ่าน Storage
     private val storagePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -30,7 +30,6 @@ class ScannerActivity : BaseActivity(), ZXingScannerView.ResultHandler {
         }
     }
 
-    // Launcher สำหรับเลือกไฟล์รูป
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -64,7 +63,8 @@ class ScannerActivity : BaseActivity(), ZXingScannerView.ResultHandler {
         val formats = arrayListOf(BarcodeFormat.QR_CODE)
         mScannerView?.setFormats(formats)
 
-        setContentView(mScannerView)
+        // ✅ แก้ไข: ระบุ type ให้ชัดเจน เพื่อแก้ Overload Resolution Ambiguity
+        setContentView(mScannerView as View)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
@@ -80,6 +80,7 @@ class ScannerActivity : BaseActivity(), ZXingScannerView.ResultHandler {
         mScannerView?.stopCamera()
     }
 
+    // ✅ แก้ไข: ใช้ override อย่างถูกต้อง
     override fun handleResult(rawResult: Result) {
         finished(rawResult.text)
     }

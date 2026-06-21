@@ -16,6 +16,8 @@ import android.view.inputmethod.InputMethodManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import io.reactivex.android.schedulers.AndroidSchedulers  // ✅ เปลี่ยน import
+import io.reactivex.schedulers.Schedulers               // ✅ เปลี่ยน import
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ActivityBypassListBinding
@@ -28,8 +30,6 @@ import com.v2ray.ang.util.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import rx.android.schedulers.AndroidSchedulers
-import rx.schedulers.Schedulers
 import java.net.URL
 import java.text.Collator
 import java.util.*
@@ -56,6 +56,7 @@ class PerAppProxyActivity : BaseActivity() {
 
         val blacklist = defaultDPreference.getPrefStringSet(PREF_PER_APP_PROXY_SET, null)
 
+        // ✅ เปลี่ยนเป็น RxJava2: subscribe รับ onNext และ onError
         AppManagerUtil.rxLoadNetworkAppList(this)
             .subscribeOn(Schedulers.io())
             .map { list ->
@@ -68,12 +69,16 @@ class PerAppProxyActivity : BaseActivity() {
                 }
             }
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe {
-                appsAll = it
-                adapter = PerAppProxyAdapter(this, it, blacklist)
+            .subscribe({ result ->
+                appsAll = result
+                adapter = PerAppProxyAdapter(this, result, blacklist)
                 binding.recyclerView.adapter = adapter
                 binding.pbWaiting.visibility = View.GONE
-            }
+            }, { error ->
+                error.printStackTrace()
+                toast(R.string.toast_failure)
+                binding.pbWaiting.visibility = View.GONE
+            })
 
         binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             var dst = 0
@@ -134,7 +139,7 @@ class PerAppProxyActivity : BaseActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_bypass_list, menu)
-        return super.onCreateOptionsMenu(menu)
+        return true  // ✅ แก้ไข: คืนค่า true
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {

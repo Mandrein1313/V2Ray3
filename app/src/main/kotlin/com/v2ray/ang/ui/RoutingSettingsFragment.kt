@@ -5,8 +5,8 @@ import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.os.Bundle
 import android.view.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import com.tbruyelle.rxpermissions2.RxPermissions // ใช้ rxpermissions2 สำหรับ AndroidX
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.FragmentRoutingSettingsBinding
@@ -21,6 +21,21 @@ import java.net.URL
 class RoutingSettingsFragment : Fragment() {
     private var _binding: FragmentRoutingSettingsBinding? = null
     private val binding get() = _binding!!
+
+    // ✅ เก็บ requestCode ที่รอไว้ ขณะขอ permission
+    private var pendingRequestCode: Int = -1
+
+    // ✅ Launcher สำหรับขอสิทธิ์กล้อง
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // เปิด ScannerActivity ด้วย requestCode ที่เก็บไว้
+            startActivityForResult(Intent(requireContext(), ScannerActivity::class.java), pendingRequestCode)
+        } else {
+            activity?.toast(R.string.toast_permission_denied)
+        }
+    }
 
     companion object {
         private const val routing_arg = "routing_arg"
@@ -86,17 +101,10 @@ class RoutingSettingsFragment : Fragment() {
         else -> super.onOptionsItemSelected(item)
     }
 
+    // ✅ เปลี่ยนจาก RxPermissions เป็น cameraPermissionLauncher
     private fun scanQRcode(requestCode: Int): Boolean {
-        activity?.let {
-            RxPermissions(this)
-                .request(Manifest.permission.CAMERA)
-                .subscribe { granted ->
-                    if (granted)
-                        startActivityForResult(Intent(it, ScannerActivity::class.java), requestCode)
-                    else
-                        it.toast(R.string.toast_permission_denied)
-                }
-        }
+        pendingRequestCode = requestCode
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         return true
     }
 

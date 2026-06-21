@@ -10,7 +10,7 @@ import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
 import com.v2ray.ang.service.V2RayServiceManager
 
-class SettingsActivity : BaseActivity() { // กลับมาใช้ BaseActivity
+class SettingsActivity : BaseActivity() {
 
     companion object {
         const val PREF_PER_APP_PROXY = "pref_per_app_proxy"
@@ -33,9 +33,10 @@ class SettingsActivity : BaseActivity() { // กลับมาใช้ BaseAct
         title = getString(R.string.title_settings)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        // ✅ ใช้ fragment_settings ตาม XML ที่คุณให้มา
         supportFragmentManager
             .beginTransaction()
-            .replace(R.id.settings_container, SettingsFragment())
+            .replace(R.id.fragment_settings, SettingsFragment())
             .commit()
     }
 
@@ -79,7 +80,6 @@ class SettingsActivity : BaseActivity() { // กลับมาใช้ BaseAct
                 true
             }
 
-            // ใช้การอ้างอิงฟังก์ชันแบบ Lambda เพื่อความสะอาด
             speedEnabled.setOnPreferenceClickListener { restartProxy(); true }
             sniffingEnabled.setOnPreferenceClickListener { restartProxy(); true }
             forwardIpv6.setOnPreferenceClickListener { restartProxy(); true }
@@ -91,28 +91,38 @@ class SettingsActivity : BaseActivity() { // กลับมาใช้ BaseAct
                 true
             }
 
-            domainStrategy.setOnPreferenceChangeListener { _, _ -> restartProxy(); true }
-            routingMode.setOnPreferenceChangeListener { _, _ -> restartProxy(); true }
+            domainStrategy.setOnPreferenceChangeListener { _, _ ->
+                restartProxy()
+                true
+            }
+
+            routingMode.setOnPreferenceChangeListener { _, _ ->
+                restartProxy()
+                true
+            }
 
             routingCustom.setOnPreferenceClickListener {
                 startActivity(Intent(requireActivity(), RoutingSettingsActivity::class.java))
                 true
             }
 
-            domesticDns.setOnPreferenceChangeListener { _, any ->
-                domesticDns.summary = if ((any as? String).isNullOrEmpty()) AppConfig.DNS_DIRECT else any
+            domesticDns.setOnPreferenceChangeListener { _, newValue ->
+                val value = newValue as? String
+                domesticDns.summary = if (value.isNullOrEmpty()) AppConfig.DNS_DIRECT else value
                 restartProxy()
                 true
             }
 
-            remoteDns.setOnPreferenceChangeListener { _, any ->
-                remoteDns.summary = if ((any as? String).isNullOrEmpty()) AppConfig.DNS_AGENT else any
+            remoteDns.setOnPreferenceChangeListener { _, newValue ->
+                val value = newValue as? String
+                remoteDns.summary = if (value.isNullOrEmpty()) AppConfig.DNS_AGENT else value
                 restartProxy()
                 true
             }
 
             mode.setOnPreferenceChangeListener { _, newValue ->
-                updatePerAppProxy(newValue.toString())
+                val modeStr = newValue as? String
+                updatePerAppProxy(modeStr)
                 restartProxy()
                 true
             }

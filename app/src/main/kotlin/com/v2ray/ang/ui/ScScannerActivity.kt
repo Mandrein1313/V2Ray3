@@ -3,7 +3,7 @@ package com.v2ray.ang.ui
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
-import com.tbruyelle.rxpermissions2.RxPermissions // ใช้ rxpermissions2 สำหรับ AndroidX
+import androidx.activity.result.contract.ActivityResultContracts
 import com.v2ray.ang.R
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.AngConfigManager
@@ -13,25 +13,27 @@ class ScScannerActivity : BaseActivity() {
         private const val REQUEST_SCAN = 1
     }
 
+    // ✅ Launcher สำหรับขอสิทธิ์กล้อง
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startActivityForResult(Intent(this, ScannerActivity::class.java), REQUEST_SCAN)
+        } else {
+            toast(R.string.toast_permission_denied)
+            finish() // ปิด Activity หากไม่ได้รับอนุญาต
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // ตรวจสอบให้แน่ใจว่า activity_none มีอยู่จริงใน layout
         setContentView(R.layout.activity_none)
         importQRcode(REQUEST_SCAN)
     }
 
+    // ✅ เปลี่ยนจาก RxPermissions เป็น cameraPermissionLauncher
     fun importQRcode(requestCode: Int): Boolean {
-        // ใช้ RxPermissions ที่รองรับ AndroidX
-        RxPermissions(this)
-            .request(Manifest.permission.CAMERA)
-            .subscribe { granted ->
-                if (granted) {
-                    startActivityForResult(Intent(this, ScannerActivity::class.java), requestCode)
-                } else {
-                    toast(R.string.toast_permission_denied)
-                    finish() // ปิด Activity หากไม่ได้รับอนุญาต
-                }
-            }
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         return true
     }
 

@@ -25,6 +25,7 @@ android {
 
     buildFeatures {
         viewBinding true
+        buildConfig true   // ✅ เพิ่มสำหรับ BuildConfig
         // dataBinding true  // ปิดไว้ก่อน ถ้าต้องการค่อยเปิด
     }
 
@@ -67,11 +68,10 @@ dependencies {
     implementation 'io.reactivex.rxjava2:rxjava:2.2.21'
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
     
-    // ❌ ลบ rxpermissions ออกแล้ว เพราะไม่มีอยู่บน JitPack แล้ว
-    // ใช้ AndroidX ActivityResult API แทน (ดูวิธีการในคำอธิบายด้านล่าง)
-    // implementation 'com.github.tbruyelle:rxpermissions:0.12'
+    // ❌ ลบ rxpermissions ออกแล้ว ใช้ AndroidX ActivityResult API แทน
 
-    // QR Code Scanner
+    // QR Code Scanner ✅ เพิ่มไลบรารีที่ขาดหายไป
+    implementation 'me.dm7.barcodescanner:zxing:1.9.13'   // ✅ เพิ่มบรรทัดนี้
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.google.zxing:core:3.5.3'
 
@@ -85,8 +85,7 @@ dependencies {
 repositories {
     google()
     mavenCentral()
-    // ไม่ต้องมี JitPack แล้ว เพราะไม่ได้ใช้ rxpermissions
-    // maven { url 'https://jitpack.io' }
+    // ไม่ต้องมี JitPack แล้ว
     flatDir {
         dirs 'libs'
     }

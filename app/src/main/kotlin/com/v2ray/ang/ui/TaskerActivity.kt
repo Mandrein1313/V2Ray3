@@ -22,8 +22,8 @@ class TaskerActivity : BaseActivity() {
         binding = ActivityTaskerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Add default value
-        lstData.add(getString(R.string.default_text)) // แนะนำให้ใช้ string resource
+        // ✅ แก้ไข: ใช้ข้อความ "Default" แทน R.string.default_text ที่ไม่มีอยู่
+        lstData.add("Default")
         lstGuid.add(AppConfig.TASKER_DEFAULT_GUID)
 
         AngConfigManager.configs.vmess.forEach {
