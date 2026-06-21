@@ -1,29 +1,33 @@
 package com.v2ray.ang.ui
 
 import android.os.Bundle
-import android.support.v7.app.AlertDialog
-import android.text.TextUtils
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import com.v2ray.ang.R
+import com.v2ray.ang.databinding.ActivityServerBinding
 import com.v2ray.ang.dto.AngConfig
 import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
-import kotlinx.android.synthetic.main.activity_server.*
 
-class ServerActivity : BaseActivity() {
+class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก BaseActivity เป็น AppCompatActivity ชั่วคราว
+
     companion object {
         private const val REQUEST_SCAN = 1
     }
+
+    private lateinit var binding: ActivityServerBinding
 
     var del_config: MenuItem? = null
     var save_config: MenuItem? = null
 
     private lateinit var configs: AngConfig
-    private var edit_index: Int = -1 //当前编辑的服务器
+    private var edit_index: Int = -1
     private var edit_guid: String = ""
     private var isRunning: Boolean = false
+
     private val securitys: Array<out String> by lazy {
         resources.getStringArray(R.array.securitys)
     }
@@ -39,7 +43,9 @@ class ServerActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_server)
+        
+        binding = ActivityServerBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         configs = AngConfigManager.configs
         edit_index = intent.getIntExtra("position", -1)
@@ -52,104 +58,89 @@ class ServerActivity : BaseActivity() {
         } else {
             clearServer()
         }
+
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
-    /**
-     * bingding seleced server config
-     */
-    fun bindingServer(vmess: AngConfig.VmessBean): Boolean {
-        et_remarks.text = Utils.getEditable(vmess.remarks)
-
-        et_address.text = Utils.getEditable(vmess.address)
-        et_port.text = Utils.getEditable(vmess.port.toString())
-        et_id.text = Utils.getEditable(vmess.id)
-        et_alterId.text = Utils.getEditable(vmess.alterId.toString())
+    private fun bindingServer(vmess: AngConfig.VmessBean): Boolean {
+        binding.etRemarks.setText(Utils.getEditable(vmess.remarks))
+        binding.etAddress.setText(Utils.getEditable(vmess.address))
+        binding.etPort.setText(Utils.getEditable(vmess.port.toString()))
+        binding.etId.setText(Utils.getEditable(vmess.id))
+        binding.etAlterId.setText(Utils.getEditable(vmess.alterId.toString()))
 
         val security = Utils.arrayFind(securitys, vmess.security)
-        if (security >= 0) {
-            sp_security.setSelection(security)
-        }
+        if (security >= 0) binding.spSecurity.setSelection(security)
+
         val network = Utils.arrayFind(networks, vmess.network)
-        if (network >= 0) {
-            sp_network.setSelection(network)
-        }
+        if (network >= 0) binding.spNetwork.setSelection(network)
 
         val headerType = Utils.arrayFind(headertypes, vmess.headerType)
-        if (headerType >= 0) {
-            sp_header_type.setSelection(headerType)
-        }
-        et_request_host.text = Utils.getEditable(vmess.requestHost)
-        et_path.text = Utils.getEditable(vmess.path)
+        if (headerType >= 0) binding.spHeaderType.setSelection(headerType)
+
+        binding.etRequestHost.setText(Utils.getEditable(vmess.requestHost))
+        binding.etPath.setText(Utils.getEditable(vmess.path))
 
         val streamSecurity = Utils.arrayFind(streamsecuritys, vmess.streamSecurity)
-        if (streamSecurity >= 0) {
-            sp_stream_security.setSelection(streamSecurity)
-        }
+        if (streamSecurity >= 0) binding.spStreamSecurity.setSelection(streamSecurity)
+
         return true
     }
 
-    /**
-     * clear or init server config
-     */
-    fun clearServer(): Boolean {
-        et_remarks.text = null
-        et_address.text = null
-        et_port.text = Utils.getEditable("10086")
-        et_id.text = null
-        et_alterId.text = Utils.getEditable("64")
-        sp_security.setSelection(0)
-        sp_network.setSelection(0)
-
-        sp_header_type.setSelection(0)
-        et_request_host.text = null
-        et_path.text = null
-        sp_stream_security.setSelection(0)
+    private fun clearServer(): Boolean {
+        binding.etRemarks.text = null
+        binding.etAddress.text = null
+        binding.etPort.setText(Utils.getEditable("10086"))
+        binding.etId.text = null
+        binding.etAlterId.setText(Utils.getEditable("64"))
+        
+        binding.spSecurity.setSelection(0)
+        binding.spNetwork.setSelection(0)
+        binding.spHeaderType.setSelection(0)
+        binding.etRequestHost.text = null
+        binding.etPath.text = null
+        binding.spStreamSecurity.setSelection(0)
+        
         return true
     }
 
-    /**
-     * save server config
-     */
-    fun saveServer(): Boolean {
-        val vmess: AngConfig.VmessBean
-        if (edit_index >= 0) {
-            vmess = configs.vmess[edit_index]
+    private fun saveServer(): Boolean {
+        val vmess: AngConfig.VmessBean = if (edit_index >= 0) {
+            configs.vmess[edit_index]
         } else {
-            vmess = AngConfig.VmessBean()
+            AngConfig.VmessBean()
         }
 
         vmess.guid = edit_guid
-        vmess.remarks = et_remarks.text.toString()
-        vmess.address = et_address.text.toString()
-        vmess.port = Utils.parseInt(et_port.text.toString())
-        vmess.id = et_id.text.toString()
-        vmess.alterId = Utils.parseInt(et_alterId.text.toString())
-        vmess.security = securitys[sp_security.selectedItemPosition]
-        vmess.network = networks[sp_network.selectedItemPosition]
+        vmess.remarks = binding.etRemarks.text.toString()
+        vmess.address = binding.etAddress.text.toString()
+        vmess.port = Utils.parseInt(binding.etPort.text.toString())
+        vmess.id = binding.etId.text.toString()
+        vmess.alterId = Utils.parseInt(binding.etAlterId.text.toString())
+        vmess.security = securitys[binding.spSecurity.selectedItemPosition]
+        vmess.network = networks[binding.spNetwork.selectedItemPosition]
+        vmess.headerType = headertypes[binding.spHeaderType.selectedItemPosition]
+        vmess.requestHost = binding.etRequestHost.text.toString()
+        vmess.path = binding.etPath.text.toString()
+        vmess.streamSecurity = streamsecuritys[binding.spStreamSecurity.selectedItemPosition]
 
-        vmess.headerType = headertypes[sp_header_type.selectedItemPosition]
-        vmess.requestHost = et_request_host.text.toString()
-        vmess.path = et_path.text.toString()
-        vmess.streamSecurity = streamsecuritys[sp_stream_security.selectedItemPosition]
-
-        if (TextUtils.isEmpty(vmess.remarks)) {
+        if (vmess.remarks.isEmpty()) {
             toast(R.string.server_lab_remarks)
             return false
         }
-        if (TextUtils.isEmpty(vmess.address)) {
+        if (vmess.address.isEmpty()) {
             toast(R.string.server_lab_address)
             return false
         }
-        if (TextUtils.isEmpty(vmess.port.toString()) || vmess.port <= 0) {
+        if (vmess.port <= 0) {
             toast(R.string.server_lab_port)
             return false
         }
-        if (TextUtils.isEmpty(vmess.id)) {
+        if (vmess.id.isEmpty()) {
             toast(R.string.server_lab_id)
             return false
         }
-        if (TextUtils.isEmpty(vmess.alterId.toString()) || vmess.alterId < 0) {
+        if (vmess.alterId < 0) {
             toast(R.string.server_lab_alterid)
             return false
         }
@@ -165,24 +156,21 @@ class ServerActivity : BaseActivity() {
         }
     }
 
-    /**
-     * save server config
-     */
-    fun deleteServer(): Boolean {
+    private fun deleteServer() {
         if (edit_index >= 0) {
-            AlertDialog.Builder(this).setMessage(R.string.del_config_comfirm)
-                    .setPositiveButton(android.R.string.ok) { _, _ ->
-                        if (AngConfigManager.removeServer(edit_index) == 0) {
-                            toast(R.string.toast_success)
-                            finish()
-                        } else {
-                            toast(R.string.toast_failure)
-                        }
+            AlertDialog.Builder(this)
+                .setMessage(R.string.del_config_comfirm)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    if (AngConfigManager.removeServer(edit_index) == 0) {
+                        toast(R.string.toast_success)
+                        finish()
+                    } else {
+                        toast(R.string.toast_failure)
                     }
-                    .show()
-        } else {
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
-        return true
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -191,20 +179,17 @@ class ServerActivity : BaseActivity() {
         save_config = menu?.findItem(R.id.save_config)
 
         if (edit_index >= 0) {
-            if (isRunning) {
-                if (edit_index == configs.index) {
-                    del_config?.isVisible = false
-                    save_config?.isVisible = false
-                }
+            if (isRunning && edit_index == configs.index) {
+                del_config?.isVisible = false
+                save_config?.isVisible = false
             }
         } else {
             del_config?.isVisible = false
         }
-
-        return super.onCreateOptionsMenu(menu)
+        return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         R.id.del_config -> {
             deleteServer()
             true
