@@ -5,15 +5,13 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)  // ✅ เปลี่ยนจาก FAIL_ON_PROJECT_REPOS
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }   // ← ต้องมีบรรทัดนี้
+        maven { url 'https://jitpack.io' }  // ✅ เพิ่ม JitPack
     }
 }
-
-rootProject.name = 'V2ray'
+rootProject.name = "V2ray"
 include ':app'
