@@ -1,35 +1,34 @@
+// แทนที่ทั้งไฟล์ด้วยเวอร์ชันนี้
 package com.v2ray.ang.util
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.util.Log
 import com.v2ray.ang.dto.AppInfo
-import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
-import io.reactivex.ObservableOnSubscribe
 
 object AppManagerUtil {
 
-    fun rxLoadNetworkAppList(context: Context): Observable<List<AppInfo>> {
-        return Observable.create(ObservableOnSubscribe<List<AppInfo>> { emitter: ObservableEmitter<List<AppInfo>> ->
-            try {
-                val packageManager = context.packageManager
-                val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                val appInfoList = mutableListOf<AppInfo>()
+    suspend fun loadNetworkAppList(context: Context): ArrayList<AppInfo> {
+        val packageManager = context.packageManager
+        val packages = packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+        val apps = ArrayList<AppInfo>()
 
-                for (app in packages) {
-                    val appInfo = AppInfo()
-                    appInfo.packageName = app.packageName
-                    appInfo.appName = packageManager.getApplicationLabel(app).toString()
-                    appInfo.icon = app.loadIcon(packageManager)
-                    appInfoList.add(appInfo)
-                }
+        for (pkg in packages) {
+            val applicationInfo = pkg.applicationInfo ?: continue
 
-                emitter.onNext(appInfoList)
-                emitter.onComplete()
-            } catch (e: Exception) {
-                emitter.onError(e)
-            }
-        })
+            val appName = applicationInfo.loadLabel(packageManager).toString()
+            val appIcon = applicationInfo.loadIcon(packageManager)
+            val isSystemApp = (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) > 0
+
+            val appInfo = AppInfo(
+                appName = appName,
+                packageName = pkg.packageName,
+                appIcon = appIcon,
+                isSystemApp = isSystemApp,
+                isSelected = 0
+            )
+            apps.add(appInfo)
+        }
+        return apps
     }
 }
