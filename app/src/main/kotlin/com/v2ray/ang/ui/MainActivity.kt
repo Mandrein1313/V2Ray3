@@ -2,7 +2,6 @@ package com.v2ray.ang.ui
 
 import android.Manifest
 import android.content.Intent
-import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
 import android.text.TextUtils
@@ -13,8 +12,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.core.view.GravityCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.helper.ItemTouchHelper
 import com.google.android.material.navigation.NavigationView
 import com.v2ray.ang.AppConfig
 import com.v2ray.ang.BuildConfig
@@ -33,46 +32,19 @@ import kotlinx.coroutines.launch
 import libv2ray.Libv2ray
 import java.net.URL
 
-import androidx.recyclerview.widget.helper.ItemTouchHelper
-
-
 class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedListener {
     private lateinit var binding: ActivityMainBinding
     private val adapter by lazy { MainRecyclerAdapter(this) }
     private var mItemTouchHelper: ItemTouchHelper? = null
     private val mainViewModel: MainViewModel by lazy { ViewModelProvider(this)[MainViewModel::class.java] }
 
-    // ตัวแปรเก็บ requestCode และ Uri ขณะรอ permission
     private var pendingRequestCode: Int = -1
-    private var pendingUri: Uri? = null
 
-    // Launcher สำหรับขอสิทธิ์กล้อง (CAMERA)
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // เปิด ScannerActivity ด้วย requestCode ที่เก็บไว้
             startActivityForResult(Intent(this, ScannerActivity::class.java), pendingRequestCode)
-        } else {
-            toast(R.string.toast_permission_denied)
-        }
-    }
-
-    // Launcher สำหรับขอสิทธิ์อ่าน Storage (READ_EXTERNAL_STORAGE)
-    private val storagePermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            pendingUri?.let { uri ->
-                try {
-                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-                        importCustomizeConfig(reader.readText())
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    toast(R.string.toast_failure)
-                }
-            }
         } else {
             toast(R.string.toast_permission_denied)
         }
@@ -89,7 +61,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        
+
         title = getString(R.string.title_server)
         setSupportActionBar(binding.toolbar)
 
@@ -107,7 +79,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
                 startV2Ray()
             }
         }
-        
+
         binding.layoutTest.setOnClickListener {
             if (mainViewModel.isRunning.value == true) {
                 binding.tvTestState.text = getString(R.string.connection_test_testing)
@@ -119,15 +91,18 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
 
+        // ✅ แก้ไข: สร้าง Callback และ ItemTouchHelper
         val callback = SimpleItemTouchHelperCallback(adapter)
         mItemTouchHelper = ItemTouchHelper(callback)
         mItemTouchHelper?.attachToRecyclerView(binding.recyclerView)
 
         val toggle = ActionBarDrawerToggle(
-            this, binding.drawerLayout, binding.toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close)
+            this, binding.drawerLayout, binding.toolbar,
+            R.string.navigation_drawer_open, R.string.navigation_drawer_close
+        )
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
-        
+
         binding.navView.setNavigationItemSelectedListener(this)
         binding.version.text = "v${BuildConfig.VERSION_NAME} (${Libv2ray.checkVersionX()})"
 
@@ -136,7 +111,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
     private fun setupViewModelObserver() {
         mainViewModel.updateListAction.observe(this) { index ->
-            if (index != null && index >= 0) adapter.updateSelectedItem(index) 
+            if (index != null && index >= 0) adapter.updateSelectedItem(index)
             else adapter.updateConfigList()
         }
         mainViewModel.updateTestResultAction.observe(this) { binding.tvTestState.text = it }
@@ -155,7 +130,7 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
 
     fun startV2Ray() {
         if (AngConfigManager.configs.index < 0) return
-        if (!Utils.startVService(this, AngConfigManager.configs.index)) { }
+        Utils.startVService(this, AngConfigManager.configs.index)
     }
 
     override fun onResume() {
@@ -197,7 +172,6 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         else -> super.onOptionsItemSelected(item)
     }
 
-    // เปลี่ยนจากใช้ RxPermissions เป็น cameraPermissionLauncher
     fun importQRcode(requestCode: Int): Boolean {
         pendingRequestCode = requestCode
         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
@@ -256,9 +230,17 @@ class MainActivity : BaseActivity(), NavigationView.OnNavigationItemSelectedList
         catch (ex: Exception) { toast(R.string.toast_require_file_manager) }
     }
 
-    // เปลี่ยนจากใช้ RxPermissions เป็น storagePermissionLauncher
-    private fun readContentFromUri(uri: Uri) {
-        pendingUri = uri
+    private fun readContentFromUri(uri: android.net.Uri) {
+        // ใช้ ActivityResult แทน RxPermissions
+        val storagePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+            if (isGranted) {
+                try {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { importCustomizeConfig(it.readText()) }
+                } catch (e: Exception) { e.printStackTrace() }
+            } else toast(R.string.toast_permission_denied)
+        }
         storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
     }
 

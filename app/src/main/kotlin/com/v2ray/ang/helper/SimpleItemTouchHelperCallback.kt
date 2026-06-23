@@ -30,8 +30,3 @@ class SimpleItemTouchHelperCallback(private val adapter: ItemTouchHelperAdapter)
 
     override fun isLongPressDragEnabled(): Boolean = true
 }
-
-interface ItemTouchHelperAdapter {
-    fun onItemMove(fromPosition: Int, toPosition: Int)
-    fun onItemDismiss(position: Int)
-}

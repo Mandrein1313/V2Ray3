@@ -1,5 +1,6 @@
 package com.v2ray.ang.service
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -9,8 +10,6 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.StrictMode
 import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.annotation.SuppressLint
 import com.v2ray.ang.R
 import com.v2ray.ang.extension.defaultDPreference
 import com.v2ray.ang.ui.PerAppProxyActivity
@@ -21,23 +20,11 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.lang.ref.SoftReference
-import android.annotation.SuppressLint
-
 
 class V2RayVpnService : VpnService(), ServiceControl {
     private lateinit var mInterface: ParcelFileDescriptor
 
-    /**
-     * Unfortunately registerDefaultNetworkCallback is going to return our VPN interface:
-     * https://android.googlesource.com/platform/frameworks/base/+/dda156ab0c5d66ad82bdcf76cda07cbc0a9c8a2e
-     *
-     * This makes doing a requestNetwork with REQUEST necessary so that we don't get ALL possible networks that
-     * satisfies default network capabilities but only THE default network. Unfortunately we need to have
-     * android.permission.CHANGE_NETWORK_STATE to be able to call requestNetwork.
-     *
-     * Source: https://android.googlesource.com/platform/frameworks/base/+/2df4c7d/services/core/java/com/android/server/ConnectivityService.java#887
-     */
-    // ✅ ใช้ SuppressLint เพื่อหลีกเลี่ยงปัญหา annotation บน property with delegate
+    // ✅ ใช้ @SuppressLint แทน @RequiresApi บน property
     @SuppressLint("NewApi")
     private val defaultNetworkRequest by lazy {
         NetworkRequest.Builder()
@@ -65,7 +52,6 @@ class V2RayVpnService : VpnService(), ServiceControl {
 
     override fun onCreate() {
         super.onCreate()
-
         val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
         StrictMode.setThreadPolicy(policy)
         V2RayServiceManager.serviceControl = SoftReference(this)
@@ -85,29 +71,9 @@ class V2RayVpnService : VpnService(), ServiceControl {
         stopV2Ray()
     }
 
-    @RequiresApi(Build.VERSION_CODES.P)
-    private fun registerNetworkCallback() {
-        try {
-            connectivity.requestNetwork(defaultNetworkRequest, defaultNetworkCallback)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.P)
-    private fun unregisterNetworkCallback() {
-        try {
-            connectivity.unregisterNetworkCallback(defaultNetworkCallback)
-        } catch (ignored: Exception) {
-            // ignored
-        }
-    }
-
     private fun setup(parameters: String) {
         val prepare = prepare(this)
-        if (prepare != null) {
-            return
-        }
+        if (prepare != null) return
 
         val builder = Builder()
         val enableLocalDns = defaultDPreference.getPrefBoolean(SettingsActivity.PREF_LOCAL_DNS_ENABLED, false)
@@ -139,10 +105,7 @@ class V2RayVpnService : VpnService(), ServiceControl {
             }
 
         if (!enableLocalDns) {
-            Utils.getRemoteDnsServers(defaultDPreference)
-                .forEach {
-                    builder.addDnsServer(it)
-                }
+            Utils.getRemoteDnsServers(defaultDPreference).forEach { builder.addDnsServer(it) }
         }
 
         builder.setSession(V2RayServiceManager.currentConfigName)
@@ -154,25 +117,24 @@ class V2RayVpnService : VpnService(), ServiceControl {
             val bypassApps = defaultDPreference.getPrefBoolean(PerAppProxyActivity.PREF_BYPASS_APPS, false)
             apps?.forEach {
                 try {
-                    if (bypassApps)
-                        builder.addDisallowedApplication(it)
-                    else
-                        builder.addAllowedApplication(it)
+                    if (bypassApps) builder.addDisallowedApplication(it)
+                    else builder.addAllowedApplication(it)
                 } catch (e: PackageManager.NameNotFoundException) {
                     // ignore
                 }
             }
         }
 
-        // Close the old interface
         try {
             mInterface.close()
-        } catch (ignored: Exception) {
-            // ignored
-        }
+        } catch (ignored: Exception) { /* ignored */ }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            registerNetworkCallback()
+            try {
+                connectivity.requestNetwork(defaultNetworkRequest, defaultNetworkCallback)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -219,7 +181,9 @@ class V2RayVpnService : VpnService(), ServiceControl {
 
     private fun stopV2Ray(isForced: Boolean = true) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            unregisterNetworkCallback()
+            try {
+                connectivity.unregisterNetworkCallback(defaultNetworkCallback)
+            } catch (ignored: Exception) { /* ignored */ }
         }
 
         V2RayServiceManager.stopV2rayPoint()
@@ -228,25 +192,12 @@ class V2RayVpnService : VpnService(), ServiceControl {
             stopSelf()
             try {
                 mInterface.close()
-            } catch (ignored: Exception) {
-                // ignored
-            }
+            } catch (ignored: Exception) { /* ignored */ }
         }
     }
 
-    override fun getService(): Service {
-        return this
-    }
-
-    override fun startService(parameters: String) {
-        setup(parameters)
-    }
-
-    override fun stopService() {
-        stopV2Ray(true)
-    }
-
-    override fun vpnProtect(socket: Int): Boolean {
-        return protect(socket)
-    }
+    override fun getService(): Service = this
+    override fun startService(parameters: String) { setup(parameters) }
+    override fun stopService() { stopV2Ray(true) }
+    override fun vpnProtect(socket: Int): Boolean = protect(socket)
 }
