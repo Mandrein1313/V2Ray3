@@ -34,9 +34,6 @@ object AngConfigManager {
         loadConfig()
     }
 
-    /**
-     * loading config
-     */
     fun loadConfig() {
         try {
             val context = app.defaultDPreference.getPrefString(ANG_CONFIG, "")
@@ -60,19 +57,14 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * add or edit server
-     */
     fun addServer(vmess: AngConfig.VmessBean, index: Int): Int {
         try {
             vmess.configVersion = 2
             vmess.configType = EConfigType.VMESS.value
 
             if (index >= 0) {
-                //edit
                 angConfig.vmess[index] = vmess
             } else {
-                //add
                 vmess.guid = Utils.getUuid()
                 angConfig.vmess.add(vmess)
                 if (angConfig.vmess.size == 1) {
@@ -88,21 +80,14 @@ object AngConfigManager {
         return 0
     }
 
-    /**
-     * 移除服务器
-     */
     fun removeServer(index: Int): Int {
         try {
             if (index < 0 || index > angConfig.vmess.size - 1) {
                 return -1
             }
 
-            //删除
             angConfig.vmess.removeAt(index)
-
-            //移除的是活动的
             adjustIndexForRemovalAt(index)
-
             storeConfigFile()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -136,9 +121,6 @@ object AngConfigManager {
         return 0
     }
 
-    /**
-     * set active server
-     */
     fun setActiveServer(index: Int): Int {
         try {
             if (index < 0 || index > angConfig.vmess.size - 1) {
@@ -160,9 +142,6 @@ object AngConfigManager {
         return 0
     }
 
-    /**
-     * store config to file
-     */
     fun storeConfigFile() {
         try {
             val conf = Gson().toJson(angConfig)
@@ -180,9 +159,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * gen and store v2ray config file
-     */
     fun genStoreV2rayConfig(): Boolean {
         return try {
             angConfig.vmess.getOrNull(angConfig.index)?.let {
@@ -229,9 +205,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * import config form qrcode or...
-     */
     fun importConfig(server: String?, subid: String, removedSelectedServer: AngConfig.VmessBean?): Int {
         try {
             if (server.isNullOrEmpty()) {
@@ -460,9 +433,6 @@ object AngConfigManager {
         return vmess
     }
 
-    /**
-     * share config
-     */
     fun shareConfig(index: Int): String {
         return try {
             if (index < 0 || index > angConfig.vmess.size - 1) {
@@ -511,9 +481,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * share2Clipboard
-     */
     fun share2Clipboard(index: Int): Int {
         return try {
             val conf = shareConfig(index)
@@ -528,9 +495,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * share2Clipboard
-     */
     fun shareAll2Clipboard(): Int {
         return try {
             val sb = StringBuilder()
@@ -549,9 +513,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * share2QRCode
-     */
     fun share2QRCode(index: Int): Bitmap? {
         return try {
             val conf = shareConfig(index)
@@ -565,9 +526,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * shareFullContent2Clipboard
-     */
     fun shareFullContent2Clipboard(index: Int): Int {
         return try {
             val result = V2rayConfigUtil.getV2rayConfig(app, angConfig.vmess[index])
@@ -583,9 +541,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * import customize config
-     */
     fun importCustomizeConfig(server: String?): Int {
         return try {
             if (server.isNullOrEmpty()) {
@@ -623,9 +578,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * getIndexViaGuid
-     */
     fun getIndexViaGuid(guid: String): Int {
         return try {
             if (TextUtils.isEmpty(guid)) return -1
@@ -636,9 +588,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     * upgrade
-     */
     fun upgradeServerVersion(vmess: AngConfig.VmessBean): Int {
         return try {
             if (vmess.configVersion == 2) return 0
@@ -760,9 +709,6 @@ object AngConfigManager {
         }
     }
 
-    /**
-     *
-     */
     fun removeSubItem(index: Int): Int {
         return try {
             if (index < 0 || index > angConfig.subItem.size - 1) {

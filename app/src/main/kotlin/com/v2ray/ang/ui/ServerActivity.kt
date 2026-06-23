@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import com.v2ray.ang.R
 import com.v2ray.ang.databinding.ActivityServerBinding
 import com.v2ray.ang.dto.AngConfig
@@ -12,7 +11,7 @@ import com.v2ray.ang.extension.toast
 import com.v2ray.ang.util.AngConfigManager
 import com.v2ray.ang.util.Utils
 
-class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก BaseActivity เป็น AppCompatActivity ชั่วคราว
+class ServerActivity : BaseActivity() {  // ✅ เปลี่ยนกลับเป็น BaseActivity
 
     companion object {
         private const val REQUEST_SCAN = 1
@@ -20,12 +19,12 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
 
     private lateinit var binding: ActivityServerBinding
 
-    var del_config: MenuItem? = null
-    var save_config: MenuItem? = null
+    private var delConfig: MenuItem? = null
+    private var saveConfig: MenuItem? = null
 
     private lateinit var configs: AngConfig
-    private var edit_index: Int = -1
-    private var edit_guid: String = ""
+    private var editIndex: Int = -1
+    private var editGuid: String = ""
     private var isRunning: Boolean = false
 
     private val securitys: Array<out String> by lazy {
@@ -43,18 +42,18 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         binding = ActivityServerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         configs = AngConfigManager.configs
-        edit_index = intent.getIntExtra("position", -1)
+        editIndex = intent.getIntExtra("position", -1)
         isRunning = intent.getBooleanExtra("isRunning", false)
         title = getString(R.string.title_server)
 
-        if (edit_index >= 0) {
-            edit_guid = configs.vmess[edit_index].guid
-            bindingServer(configs.vmess[edit_index])
+        if (editIndex >= 0) {
+            editGuid = configs.vmess[editIndex].guid
+            bindServer(configs.vmess[editIndex])
         } else {
             clearServer()
         }
@@ -62,7 +61,7 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
     }
 
-    private fun bindingServer(vmess: AngConfig.VmessBean): Boolean {
+    private fun bindServer(vmess: AngConfig.VmessBean): Boolean {
         binding.etRemarks.setText(Utils.getEditable(vmess.remarks))
         binding.etAddress.setText(Utils.getEditable(vmess.address))
         binding.etPort.setText(Utils.getEditable(vmess.port.toString()))
@@ -93,25 +92,25 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
         binding.etPort.setText(Utils.getEditable("10086"))
         binding.etId.text = null
         binding.etAlterId.setText(Utils.getEditable("64"))
-        
+
         binding.spSecurity.setSelection(0)
         binding.spNetwork.setSelection(0)
         binding.spHeaderType.setSelection(0)
         binding.etRequestHost.text = null
         binding.etPath.text = null
         binding.spStreamSecurity.setSelection(0)
-        
+
         return true
     }
 
     private fun saveServer(): Boolean {
-        val vmess: AngConfig.VmessBean = if (edit_index >= 0) {
-            configs.vmess[edit_index]
+        val vmess: AngConfig.VmessBean = if (editIndex >= 0) {
+            configs.vmess[editIndex]
         } else {
             AngConfig.VmessBean()
         }
 
-        vmess.guid = edit_guid
+        vmess.guid = editGuid
         vmess.remarks = binding.etRemarks.text.toString()
         vmess.address = binding.etAddress.text.toString()
         vmess.port = Utils.parseInt(binding.etPort.text.toString())
@@ -145,8 +144,8 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
             return false
         }
 
-        if (AngConfigManager.addServer(vmess, edit_index) == 0) {
-            AngConfigManager.genStoreV2rayConfigIfActive(edit_index)
+        if (AngConfigManager.addServer(vmess, editIndex) == 0) {
+            AngConfigManager.genStoreV2rayConfigIfActive(editIndex)
             toast(R.string.toast_success)
             finish()
             return true
@@ -157,11 +156,11 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
     }
 
     private fun deleteServer() {
-        if (edit_index >= 0) {
+        if (editIndex >= 0) {
             AlertDialog.Builder(this)
                 .setMessage(R.string.del_config_comfirm)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    if (AngConfigManager.removeServer(edit_index) == 0) {
+                    if (AngConfigManager.removeServer(editIndex) == 0) {
                         toast(R.string.toast_success)
                         finish()
                     } else {
@@ -175,16 +174,16 @@ class ServerActivity : AppCompatActivity() {   // เปลี่ยนจาก
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.action_server, menu)
-        del_config = menu?.findItem(R.id.del_config)
-        save_config = menu?.findItem(R.id.save_config)
+        delConfig = menu?.findItem(R.id.del_config)
+        saveConfig = menu?.findItem(R.id.save_config)
 
-        if (edit_index >= 0) {
-            if (isRunning && edit_index == configs.index) {
-                del_config?.isVisible = false
-                save_config?.isVisible = false
+        if (editIndex >= 0) {
+            if (isRunning && editIndex == configs.index) {
+                delConfig?.isVisible = false
+                saveConfig?.isVisible = false
             }
         } else {
-            del_config?.isVisible = false
+            delConfig?.isVisible = false
         }
         return true
     }
