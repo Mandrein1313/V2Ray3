@@ -62,7 +62,6 @@ class ServerActivity : BaseActivity() {
     }
 
     private fun bindServer(vmess: AngConfig.VmessBean): Boolean {
-        // ✅ ใช้ binding. นำหน้าทุกที่
         binding.etRemarks.setText(Utils.getEditable(vmess.remarks))
         binding.etAddress.setText(Utils.getEditable(vmess.address))
         binding.etPort.setText(Utils.getEditable(vmess.port.toString()))
@@ -88,7 +87,6 @@ class ServerActivity : BaseActivity() {
     }
 
     private fun clearServer(): Boolean {
-        // ✅ ใช้ binding. นำหน้าทุกที่
         binding.etRemarks.text = null
         binding.etAddress.text = null
         binding.etPort.setText(Utils.getEditable("10086"))
@@ -112,7 +110,6 @@ class ServerActivity : BaseActivity() {
             AngConfig.VmessBean()
         }
 
-        // ✅ ใช้ binding. นำหน้าทุกที่
         vmess.guid = editGuid
         vmess.remarks = binding.etRemarks.text.toString()
         vmess.address = binding.etAddress.text.toString()
